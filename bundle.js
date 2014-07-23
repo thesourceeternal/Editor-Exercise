@@ -43,10 +43,14 @@ window.addEventListener( 'load', function () {
 */
 
 var display = require('../display.js');
-var userState = require('../userstate.js');
+var userState = require('../uservals/userstate.js');
+var userPrefs = require('../uservals/userprefs.js');
 
 
 module.exports = keyEvents = function () {
+
+	// Get in more local scope
+	var hotkeys = userPrefs.hotkeys;
 
 	document.addEventListener( 'keyup', function () {
 
@@ -55,11 +59,11 @@ module.exports = keyEvents = function () {
 		/* ===================================
 		   UI
 		   ==================================== */
-		if ( keyCode === userState.preferences.hotkeys.pointerLock[2] ) {
+		if ( keyCode === hotkeys.pointerLock[2] ) {
 
 			// Toggle display of inspector/assests vs. object sampler
 			// but not on first arrival where hideIntro() will take care of it
-			if ( userState.arrival ) {
+			if ( userState.arrival === true ) {
 
 				// This will take care of pointer lock too
 				display.hideIntro();
@@ -78,7 +82,7 @@ module.exports = keyEvents = function () {
 		/* ===================================
 		   RUNNING TESTS
 		   ==================================== */
-		else if ( keyCode === userState.preferences.hotkeys.tests[2] ) {
+		else if ( keyCode === hotkeys.tests[2] ) {
 
 			if (pointerLock.isLocked) {
 
@@ -98,14 +102,15 @@ module.exports = keyEvents = function () {
 
 };
 
-},{"../display.js":5,"../userstate.js":7}],3:[function(require,module,exports){
+},{"../display.js":5,"../uservals/userprefs.js":6,"../uservals/userstate.js":7}],3:[function(require,module,exports){
 /* 
 * Handles user mouse input events
 * There will eventually be a lot of them
 */
 
 var display = require('../display.js');
-var userState = require('../userstate.js');
+var userState = require('../uservals/userstate.js');
+var userPrefs = require('../uservals/userprefs.js');
 
 
 module.exports = mouseEvents = function () {
@@ -169,7 +174,7 @@ module.exports = mouseEvents = function () {
 	// one little event listener
 	document.addEventListener( 'click', function () {
 
-		if ( userState.arrival ) {
+		if ( userState.arrival === true ) {
 
 			// Will take care of pointer lock and all that jazz
 			display.hideIntro();
@@ -180,7 +185,7 @@ module.exports = mouseEvents = function () {
 
 };
 
-},{"../display.js":5,"../userstate.js":7}],4:[function(require,module,exports){
+},{"../display.js":5,"../uservals/userprefs.js":6,"../uservals/userstate.js":7}],4:[function(require,module,exports){
 /*
 * http://www.html5rocks.com/en/tutorials/pointerlock/intro/
 * Also with functionality to toggle pointer lock
@@ -341,17 +346,10 @@ module.exports = pointerLock = {
 * Controls the hiding and showing of element blocks
 */
 
-var userState = require('./userState.js');
+var userState = require('./uservals/userstate.js');
 
 
 module.exports = displayBlocks = {
-
-	// Bools
-	editorShowing: false,
-	inspectorShowing: true,
-	assetsShowing: false,
-	// samplerShowing: false,
-	codeShowing: false,
 
 	/* ===================================
 	   Functions
@@ -387,7 +385,7 @@ module.exports = displayBlocks = {
 	// --- Editor Blocks --- \\
 	toggleEditor: function () {
 		
-		if (displayBlocks.editorShowing) {
+		if (userState.editorShowing === true) {
 			displayBlocks.hideEditor();
 		} else {
 			displayBlocks.showEditor();
@@ -409,7 +407,7 @@ module.exports = displayBlocks = {
 		// This is for just after the intro
 		document.getElementsByClassName( "bottombar" )[0].classList.remove("collapsed");
 
-		displayBlocks.editorShowing = true;
+		userState.editorShowing = true;
 
 	},  // end showEditor()
 
@@ -428,7 +426,7 @@ module.exports = displayBlocks = {
 		// Show inventory perhaps
 		// document.getElementsByClassName( "inventory" )[0].classList.remove("collapsed");
 
-		displayBlocks.editorShowing = false;
+		userState.editorShowing = false;
 
 	},  // end hideEditor()
 
@@ -436,7 +434,7 @@ module.exports = displayBlocks = {
 	// toggleTabs: function () {
 
 	// 	// Toggle visibility of the inspector and assets in sidebar
-	// 	if ( displayBlocks.inspectorShowing ) {
+	// 	if ( userState.inspectorShowing ) {
 
 		// displayBlocks.showAssets();
 
@@ -458,7 +456,7 @@ module.exports = displayBlocks = {
 		document.getElementsByClassName( "inspector-get" )[0].classList.add("active-tab");
 		document.getElementsByClassName( "assets-get" )[0].classList.remove("active-tab");
 
-		displayBlocks.inspectorShowing = true;
+		userState.inspectorShowing = true;
 
 	},  // end showInspector()
 
@@ -472,7 +470,7 @@ module.exports = displayBlocks = {
 		document.getElementsByClassName( "assets-get" )[0].classList.add("active-tab");
 		document.getElementsByClassName( "inspector-get" )[0].classList.remove("active-tab");
 
-		displayBlocks.inspectorShowing = false;
+		userState.inspectorShowing = false;
 
 
 	},  // end showAssets()
@@ -525,7 +523,41 @@ module.exports = displayBlocks = {
 
 }
 
-},{"./userState.js":6}],6:[function(require,module,exports){
+},{"./uservals/userstate.js":7}],6:[function(require,module,exports){
+/*
+* User preferences, like hotkeys or flying
+*/
+
+module.exports = userPrefs = {
+
+	hotkeys: {
+
+		// --- FPS Movement --- \\
+		// NOT YET IMPLEMENTED
+		forwards: ["forwards", "w", 87],
+		left: ["left", "a", 65],
+		backwards: ["backwards", "s", 83],
+		right: ["right", "d", 68],
+		jumpup: ["jump/up", "spacebar", 32],  // just up
+		crouchdown: ["crouch/down", "shift", 16],  // just down
+		// TODO: Implement double tapping, holding, and other behavior
+		// TODO: Discuss implications of this behavior for user experience
+		// startFlying: ["start flying", "double tap space bar", 32],
+		toggleFlying: ["toggle flying", "f", 70],
+
+		// --- pointerlock --- \\
+		pointerLock: ["pointer lock", "esc", 27],
+
+		// --- Testing --- \\
+		tests: ["run tests", "t", 84],
+
+	},  // end hotkeys{}
+
+	flying: true,
+
+};  // end preferences{}
+
+},{}],7:[function(require,module,exports){
 /*
 * User variables that need to be stored and accessed
 */
@@ -533,6 +565,10 @@ module.exports = displayBlocks = {
 module.exports = userState = {
 
 	arrival: true,
+
+	// Display
+	editorShowing: false,
+	inspectorShowing: true,
 
 	preferences: {
 
@@ -566,8 +602,6 @@ module.exports = userState = {
 }
 
 
-},{}],7:[function(require,module,exports){
-module.exports=require(6)
 },{}],8:[function(require,module,exports){
 
 },{}],9:[function(require,module,exports){
