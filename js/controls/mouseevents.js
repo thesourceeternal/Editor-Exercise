@@ -68,7 +68,7 @@ module.exports = mouseEvents = function () {
 	// one little event listener
 	document.addEventListener( 'click', function () {
 
-		if ( userState.arrival ) {
+		if ( userState.arrival === true ) {
 
 			// Will take care of pointer lock and all that jazz
 			display.hideIntro();
