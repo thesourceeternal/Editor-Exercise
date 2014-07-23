@@ -41,7 +41,7 @@ module.exports = displayBlocks = {
 	// --- Editor Blocks --- \\
 	toggleEditor: function () {
 		
-		if (userState.editorShowing) {
+		if (userState.editorShowing === true) {
 			displayBlocks.hideEditor();
 		} else {
 			displayBlocks.showEditor();

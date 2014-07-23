@@ -9,6 +9,9 @@ var userState = require('../userstate.js');
 
 module.exports = keyEvents = function () {
 
+	// Get in more local scope
+	var hotkeys = userState.preferences.hotkeys;
+
 	document.addEventListener( 'keyup', function () {
 
 		var keyCode = ( 'which' in event ) ? event.which : event.keyCode;
@@ -16,11 +19,11 @@ module.exports = keyEvents = function () {
 		/* ===================================
 		   UI
 		   ==================================== */
-		if ( keyCode === userState.preferences.hotkeys.pointerLock[2] ) {
+		if ( keyCode === hotkeys.pointerLock[2] ) {
 
 			// Toggle display of inspector/assests vs. object sampler
 			// but not on first arrival where hideIntro() will take care of it
-			if ( userState.arrival ) {
+			if ( userState.arrival === true ) {
 
 				// This will take care of pointer lock too
 				display.hideIntro();
@@ -39,7 +42,7 @@ module.exports = keyEvents = function () {
 		/* ===================================
 		   RUNNING TESTS
 		   ==================================== */
-		else if ( keyCode === userState.preferences.hotkeys.tests[2] ) {
+		else if ( keyCode === hotkeys.tests[2] ) {
 
 			if (pointerLock.isLocked) {
 
