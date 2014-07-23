@@ -2,7 +2,7 @@
 * Controls the hiding and showing of element blocks
 */
 
-var userState = require('./userState.js');
+var userState = require('./uservals/userstate.js');
 
 
 module.exports = displayBlocks = {

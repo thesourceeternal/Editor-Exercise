@@ -4,7 +4,8 @@
 */
 
 var display = require('../display.js');
-var userState = require('../userstate.js');
+var userState = require('../uservals/userstate.js');
+var userPrefs = require('../uservals/userprefs.js');
 
 
 module.exports = mouseEvents = function () {

@@ -4,13 +4,14 @@
 */
 
 var display = require('../display.js');
-var userState = require('../userstate.js');
+var userState = require('../uservals/userstate.js');
+var userPrefs = require('../uservals/userprefs.js');
 
 
 module.exports = keyEvents = function () {
 
 	// Get in more local scope
-	var hotkeys = userState.preferences.hotkeys;
+	var hotkeys = userPrefs.hotkeys;
 
 	document.addEventListener( 'keyup', function () {
 
