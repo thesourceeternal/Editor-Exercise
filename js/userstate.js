@@ -6,6 +6,10 @@ module.exports = userState = {
 
 	arrival: true,
 
+	// Display
+	editorShowing: false,
+	inspectorShowing: true,
+
 	preferences: {
 
 		hotkeys: {
