@@ -1,4 +1,4 @@
-Unwritten-Exercise
+Editor-Exercise
 ==================
 
-An exercise in recreating Unwritten3D
+An exercise in recreating elements of threejs's editor
