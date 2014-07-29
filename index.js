@@ -10,6 +10,7 @@ var mouseEvents = require('./js/controls/mouseevents.js');
 var keyEvents = require('./js/controls/keyevents.js');
 
 window.addEventListener( 'load', function () {
+	console.log("PROJECT: Editor Exercise");
 
 	/* ===================================
 	    Server
