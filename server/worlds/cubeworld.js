@@ -3,7 +3,7 @@
 module.exports = cubeWorld = function () {
 
 	// Hack to get require working
-	this.controls = null;
+	var controls;
 
 	var camera, scene, renderer;
 	var geometry, material, mesh;
@@ -17,6 +17,7 @@ module.exports = cubeWorld = function () {
 
 	function init() {
 
+		// Onwards!
 		camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
 
 		scene = new THREE.Scene();
@@ -30,8 +31,8 @@ module.exports = cubeWorld = function () {
 		light.position.set( -1, - 0.5, -1 );
 		scene.add( light );
 
-		cubeWorld.controls = new THREE.PointerLockControls( camera );
-		scene.add( cubeWorld.controls.getObject() );
+		controls = new THREE.PointerLockControls( camera );
+		scene.add( controls.getObject() );
 
 		ray = new THREE.Raycaster();
 		ray.ray.direction.set( 0, -1, 0 );
@@ -105,14 +106,37 @@ module.exports = cubeWorld = function () {
 
 		window.addEventListener( 'resize', onWindowResize, false );
 
+		// Hack to get require and external scripts working
+		// Need to be declared in here or values = undefined.
+		cubeWorld.controls = controls;
+		
+		cubeWorld.camera = camera;
+		cubeWorld.oldCamera = camera;
+		cubeWorld.scene = scene;
+		cubeWorld.renderer = renderer;
+
+		cubeWorld.geometry = geometry;
+		cubeWorld.material = material;
+		cubeWorld.mesh = mesh;
+
+		cubeWorld.objects = objects;
+
+		cubeWorld.ray = ray;
+
+		// For selecting objects
+		cubeWorld.projector = new THREE.Projector();
+		cubeWorld.raycaster = new THREE.Raycaster();
+
 	}
 
 	function onWindowResize() {
 
+		var camera = cubeWorld.camera;
+
 		camera.aspect = window.innerWidth / window.innerHeight;
 		camera.updateProjectionMatrix();
 
-		renderer.setSize( window.innerWidth, window.innerHeight );
+		cubeWorld.renderer.setSize( window.innerWidth, window.innerHeight );
 
 	}
 
@@ -120,9 +144,9 @@ module.exports = cubeWorld = function () {
 
 		requestAnimationFrame( animate );
 
-		cubeWorld.controls.isOnObject( false );
+		controls.isOnObject( false );
 
-		ray.ray.origin.copy( cubeWorld.controls.getObject().position );
+		ray.ray.origin.copy( controls.getObject().position );
 		ray.ray.origin.y -= 10;
 
 		var intersections = ray.intersectObjects( objects );
@@ -133,13 +157,13 @@ module.exports = cubeWorld = function () {
 
 			if ( distance > 0 && distance < 10 ) {
 
-				cubeWorld.controls.isOnObject( true );
+				controls.isOnObject( true );
 
 			}
 
 		}
 
-		cubeWorld.controls.update();
+		controls.update();
 
 		renderer.render( scene, camera );
 
