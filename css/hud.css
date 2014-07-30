@@ -61,8 +61,7 @@ input[type=number] {
 }
 
 
-/* --- Bars --- */
-/* - sidebar - */
+/* --- Sidebar --- */
 .sidebar {
 	position: absolute;
 	top: 0;
@@ -115,7 +114,20 @@ input[type=number] {
 
 .transforms li {display: inline-block;}
 
-/* - bottombar - */
+
+/* --- Non-sidebar --- */
+.intro {
+	height: 100%;
+	width: 100%;
+	padding-top: 10%;
+}
+
+.reticule {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+}
+
 .bottombar {  /* needs functional name */
 	position: absolute;
 	bottom: 0;
@@ -123,14 +135,6 @@ input[type=number] {
 	width: 100%;
 	padding: .3rem;
 	overflow: auto;
-}
-
-
-/* --- Intro --- */
-.intro {
-	height: 100%;
-	width: 100%;
-	padding-top: 10%;
 }
 
 
@@ -214,8 +218,7 @@ fieldset {
 }
 
 
-/* --- Bars --- */
-/* - sidebar - */
+/* --- Sidebars --- */
 .sidebar {
 	border: .1rem solid rgb(40, 40, 40);
 }
@@ -279,9 +282,32 @@ fieldset button {
 }
 
 
-/* --- Intro --- */
+/* --- Non-sidebar --- */
 .intro {
 	background-color: rgba(17, 17, 17, 0.4);
 	color: white;
 	font-size: 1.7rem;
+}
+
+.ret-light {
+	height: 2.3rem;
+	width: 2.3rem;
+	margin: -1.1rem;
+	border: rgb(109, 168, 220) solid .35em;
+	border-radius: .9rem;
+}
+
+.ret-dark {
+	height: 2.3rem;
+	width: 2.3rem;
+	margin: -1.1rem;
+	border: rgb(71, 105, 135) solid .45em;
+	border-radius: .9rem;
+}
+
+.ret-center {
+	height: .4rem;
+	width: .4rem;
+	margin: -.2rem;
+	background-color: rgb(109, 168, 220);
 }
