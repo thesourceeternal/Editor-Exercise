@@ -127,13 +127,8 @@ var htmlBlocks = module.exports = {
 						)  // end li.obj-1
 					)  // end ul
 
-				),  // end menu.scene-tree
-					
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
+				)  // end menu.scene-tree
+
 			)  // end div.collapsible
 
 		)  // end .scene-tree-container
@@ -188,13 +183,8 @@ var htmlBlocks = module.exports = {
 
 					)  // end ul
 
-				),  // end form
+				)  // end form
 
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
 			)  // end div.collapsible
 
 		),  // end objectInfo
@@ -301,13 +291,8 @@ var htmlBlocks = module.exports = {
 
 					)  // end .scale
 
-				),  // end form
+				)  // end form
 
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
 			)  // end div.collapsible
 
 		)  // end .transforms
@@ -341,13 +326,8 @@ var htmlBlocks = module.exports = {
 
 					)  // end ul
 
-				),  // end form
+				)  // end form
 
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
 			)  // end div.collapsible
 
 		)  // end section.material
@@ -385,13 +365,8 @@ var htmlBlocks = module.exports = {
 
 					)  // end ul
 
-				),  // end form
+				)  // end form
 
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
 			)  // end div.collapsible
 
 		)  // end .componentType
