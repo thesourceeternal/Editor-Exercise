@@ -142,6 +142,10 @@ module.exports = cubeWorld = function () {
 
 	function animate() {
 
+		var controls = cubeWorld.controls,
+			ray = cubeWorld.ray,
+			renderer = cubeWorld.renderer;
+
 		requestAnimationFrame( animate );
 
 		controls.isOnObject( false );

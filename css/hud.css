@@ -98,7 +98,7 @@ input[type=number] {
 
 .sidebar section {
 	position: relative; /* for abs pos children */
-	padding-top: .25rem;
+	padding: .4rem 0;
 }
 
 .scene-tree {
