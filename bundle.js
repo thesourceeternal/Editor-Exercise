@@ -2,22 +2,25 @@
 // Starts things off
 
 // Server stuff
-var cubeWorld = require('./server/worlds/cubeworld.js');
+var world = require('./server/worlds/cubeworld.js');
 var html = require('./server/htmlBlocks.js');
 
 // User stuff
 var pointerLock = require('./js/controls/pointerlock.js');
+var select = require('./js/controls/select.js');
 var mouseEvents = require('./js/controls/mouseevents.js');
 var keyEvents = require('./js/controls/keyevents.js');
+var display = require('./js/display.js');
 
 window.addEventListener( 'load', function () {
+	console.log("PROJECT: Editor Exercise");
 
 	/* ===================================
 	    Server
 	   ==================================== */
 
 	// TODO: Need to seperate client stuff from this file
-	cubeWorld();
+	world();
 
 	// The editor element representations of the objects
 	html._init_();
@@ -27,6 +30,12 @@ window.addEventListener( 'load', function () {
 	    User/Client
 	   ==================================== */
 
+	// Get some elements for hiding and showing
+	display._init_();
+
+	// Activate axis objects
+	select.initSelect();
+
 	// Make all the pointer lock things work
 	pointerLock._init_();
 
@@ -34,9 +43,995 @@ window.addEventListener( 'load', function () {
 	mouseEvents();
 	keyEvents();
 
+	// Start things off
+	display.showIntro();
+
 } );  // end window on load
 
-},{"./js/controls/keyevents.js":2,"./js/controls/mouseevents.js":3,"./js/controls/pointerlock.js":4,"./server/htmlBlocks.js":17,"./server/worlds/cubeworld.js":18}],2:[function(require,module,exports){
+},{"./js/controls/keyevents.js":3,"./js/controls/mouseevents.js":4,"./js/controls/pointerlock.js":5,"./js/controls/select.js":6,"./js/display.js":8,"./server/htmlBlocks.js":20,"./server/worlds/cubeworld.js":21}],2:[function(require,module,exports){
+/**
+ * @author arodic / https://github.com/arodic
+ */
+ /*jshint sub:true*/
+
+module.exports = axis = function () {
+
+	'use strict';
+
+	var GizmoMaterial = function ( parameters ) {
+
+		THREE.MeshBasicMaterial.call( this );
+
+		this.depthTest = false;
+		this.depthWrite = false;
+		this.side = THREE.FrontSide;
+		this.transparent = true;
+
+		this.setValues( parameters );
+
+		this.oldColor = this.color.clone();
+		this.oldOpacity = this.opacity;
+
+		this.highlight = function( highlighted ) {
+
+			if ( highlighted ) {
+
+				this.color.setRGB( 1, 1, 0 );
+				this.opacity = 1;
+
+			} else {
+
+					this.color.copy( this.oldColor );
+					this.opacity = this.oldOpacity;
+
+			}
+
+		};
+
+	};
+
+	GizmoMaterial.prototype = Object.create( THREE.MeshBasicMaterial.prototype );
+
+	var GizmoLineMaterial = function ( parameters ) {
+
+		THREE.LineBasicMaterial.call( this );
+
+		this.depthTest = false;
+		this.depthWrite = false;
+		this.transparent = true;
+		this.linewidth = 1;
+
+		this.setValues( parameters );
+
+		this.oldColor = this.color.clone();
+		this.oldOpacity = this.opacity;
+
+		this.highlight = function( highlighted ) {
+
+			if ( highlighted ) {
+
+				this.color.setRGB( 1, 1, 0 );
+				this.opacity = 1;
+
+			} else {
+
+					this.color.copy( this.oldColor );
+					this.opacity = this.oldOpacity;
+
+			}
+
+		};
+
+	};
+
+	GizmoLineMaterial.prototype = Object.create( THREE.LineBasicMaterial.prototype );
+
+	THREE.TransformGizmo = function () {
+
+		var scope = this;
+		var showPickers = false; //debug
+		var showActivePlane = false; //debug
+
+		this.init = function () {
+
+			THREE.Object3D.call( this );
+
+			this.handles = new THREE.Object3D();
+			this.pickers = new THREE.Object3D();
+			this.planes = new THREE.Object3D();
+
+			this.add(this.handles);
+			this.add(this.pickers);
+			this.add(this.planes);
+
+			//// PLANES
+
+			var planeGeometry = new THREE.PlaneGeometry( 50, 50, 2, 2 );
+			var planeMaterial = new THREE.MeshBasicMaterial( { wireframe: true } );
+			planeMaterial.side = THREE.DoubleSide;
+
+			var planes = {
+				"XY":   new THREE.Mesh( planeGeometry, planeMaterial ),
+				"YZ":   new THREE.Mesh( planeGeometry, planeMaterial ),
+				"XZ":   new THREE.Mesh( planeGeometry, planeMaterial ),
+				"XYZE": new THREE.Mesh( planeGeometry, planeMaterial )
+			};
+
+			this.activePlane = planes["XYZE"];
+
+			planes["YZ"].rotation.set( 0, Math.PI/2, 0 );
+			planes["XZ"].rotation.set( -Math.PI/2, 0, 0 );
+
+			for (var i in planes) {
+				planes[i].name = i;
+				this.planes.add(planes[i]);
+				this.planes[i] = planes[i];
+				planes[i].visible = false;
+			}
+
+			//// HANDLES AND PICKERS
+
+			var setupGizmos = function( gizmoMap, parent ) {
+
+				for ( var name in gizmoMap ) {
+
+					for ( i = gizmoMap[name].length; i--;) {
+						
+						var object = gizmoMap[name][i][0];
+						var position = gizmoMap[name][i][1];
+						var rotation = gizmoMap[name][i][2];
+
+						object.name = name;
+
+						if ( position ) object.position.set( position[0], position[1], position[2] );
+						if ( rotation ) object.rotation.set( rotation[0], rotation[1], rotation[2] );
+						
+						parent.add( object );
+
+					}
+
+				}
+
+			};
+
+			setupGizmos(this.handleGizmos, this.handles);
+			setupGizmos(this.pickerGizmos, this.pickers);
+
+			// reset Transformations
+
+			this.traverse(function ( child ) {
+				if (child instanceof THREE.Mesh) {
+					child.updateMatrix();
+
+					var tempGeometry = new THREE.Geometry();
+					tempGeometry.merge( child.geometry, child.matrix );
+
+					child.geometry = tempGeometry;
+					child.position.set( 0, 0, 0 );
+					child.rotation.set( 0, 0, 0 );
+					child.scale.set( 1, 1, 1 );
+				}
+			});
+
+		};
+
+		this.hide = function () {
+			this.traverse(function( child ) {
+				child.visible = false;
+			});
+		};
+
+		this.show = function () {
+			this.traverse(function( child ) {
+				child.visible = true;
+				if (child.parent == scope.pickers ) child.visible = showPickers;
+				if (child.parent == scope.planes ) child.visible = false;
+			});
+			this.activePlane.visible = showActivePlane;
+		};
+
+		this.highlight = function ( axis ) {
+			this.traverse(function( child ) {
+				if ( child.material && child.material.highlight ){
+					if ( child.name == axis ) {
+						child.material.highlight( true );
+					} else {
+						child.material.highlight( false );
+					}
+				}
+			});
+		};
+
+	};
+
+	THREE.TransformGizmo.prototype = Object.create( THREE.Object3D.prototype );
+
+	THREE.TransformGizmo.prototype.update = function ( rotation, eye ) {
+
+		var vec1 = new THREE.Vector3( 0, 0, 0 );
+		var vec2 = new THREE.Vector3( 0, 1, 0 );
+		var lookAtMatrix = new THREE.Matrix4();
+
+		this.traverse(function(child) {
+			if ( child.name.search("E") != -1 ) {
+				child.quaternion.setFromRotationMatrix( lookAtMatrix.lookAt( eye, vec1, vec2 ) );
+			} else if ( child.name.search("X") != -1 || child.name.search("Y") != -1 || child.name.search("Z") != -1 ) {
+				child.quaternion.setFromEuler( rotation );
+			}
+		});
+
+	};
+
+	THREE.TransformGizmoTranslate = function () {
+
+		THREE.TransformGizmo.call( this );
+
+		var arrowGeometry = new THREE.Geometry();
+		var mesh = new THREE.Mesh( new THREE.CylinderGeometry( 0, 0.05, 0.2, 12, 1, false ) );
+		mesh.position.y = 0.5;
+		mesh.updateMatrix();
+
+		arrowGeometry.merge( mesh.geometry, mesh.matrix );
+		
+		var lineXGeometry = new THREE.Geometry();
+		lineXGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 1, 0, 0 ) );
+
+		var lineYGeometry = new THREE.Geometry();
+		lineYGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 1, 0 ) );
+
+		var lineZGeometry = new THREE.Geometry();
+		lineZGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, 1 ) );
+
+		this.handleGizmos = {
+			X: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0xff0000 } ) ), [ 0.5, 0, 0 ], [ 0, 0, -Math.PI/2 ] ],
+				[ new THREE.Line( lineXGeometry, new GizmoLineMaterial( { color: 0xff0000 } ) ) ]
+			],
+			Y: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0x00ff00 } ) ), [ 0, 0.5, 0 ] ],
+				[	new THREE.Line( lineYGeometry, new GizmoLineMaterial( { color: 0x00ff00 } ) ) ]
+			],
+			Z: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0x0000ff } ) ), [ 0, 0, 0.5 ], [ Math.PI/2, 0, 0 ] ],
+				[ new THREE.Line( lineZGeometry, new GizmoLineMaterial( { color: 0x0000ff } ) ) ]
+			],
+			XYZ: [
+				[ new THREE.Mesh( new THREE.OctahedronGeometry( 0.1, 0 ), new GizmoMaterial( { color: 0xffffff, opacity: 0.25 } ) ), [ 0, 0, 0 ], [ 0, 0, 0 ] ]
+			],
+			XY: [
+				[ new THREE.Mesh( new THREE.PlaneGeometry( 0.29, 0.29 ), new GizmoMaterial( { color: 0xffff00, opacity: 0.25 } ) ), [ 0.15, 0.15, 0 ] ]
+			],
+			YZ: [
+				[ new THREE.Mesh( new THREE.PlaneGeometry( 0.29, 0.29 ), new GizmoMaterial( { color: 0x00ffff, opacity: 0.25 } ) ), [ 0, 0.15, 0.15 ], [ 0, Math.PI/2, 0 ] ]
+			],
+			XZ: [
+				[ new THREE.Mesh( new THREE.PlaneGeometry( 0.29, 0.29 ), new GizmoMaterial( { color: 0xff00ff, opacity: 0.25 } ) ), [ 0.15, 0, 0.15 ], [ -Math.PI/2, 0, 0 ] ]
+			]
+		};
+
+		this.pickerGizmos = {
+			X: [
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), new GizmoMaterial( { color: 0xff0000, opacity: 0.25 } ) ), [ 0.6, 0, 0 ], [ 0, 0, -Math.PI/2 ] ]
+			],
+			Y: [
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), new GizmoMaterial( { color: 0x00ff00, opacity: 0.25 } ) ), [ 0, 0.6, 0 ] ]
+			],
+			Z: [
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), new GizmoMaterial( { color: 0x0000ff, opacity: 0.25 } ) ), [ 0, 0, 0.6 ], [ Math.PI/2, 0, 0 ] ]
+			],
+			XYZ: [
+				[ new THREE.Mesh( new THREE.OctahedronGeometry( 0.2, 0 ), new GizmoMaterial( { color: 0xffffff, opacity: 0.25 } ) ) ]
+			],
+			XY: [
+				[ new THREE.Mesh( new THREE.PlaneGeometry( 0.4, 0.4 ), new GizmoMaterial( { color: 0xffff00, opacity: 0.25 } ) ), [ 0.2, 0.2, 0 ] ]
+			],
+			YZ: [
+				[ new THREE.Mesh( new THREE.PlaneGeometry( 0.4, 0.4 ), new GizmoMaterial( { color: 0x00ffff, opacity: 0.25 } ) ), [ 0, 0.2, 0.2 ], [ 0, Math.PI/2, 0 ] ]
+			],
+			XZ: [
+				[ new THREE.Mesh( new THREE.PlaneGeometry( 0.4, 0.4 ), new GizmoMaterial( { color: 0xff00ff, opacity: 0.25 } ) ), [ 0.2, 0, 0.2 ], [ -Math.PI/2, 0, 0 ] ]
+			]
+		};
+
+		this.setActivePlane = function ( axis, eye ) {
+
+			var tempMatrix = new THREE.Matrix4();
+			eye.applyMatrix4( tempMatrix.getInverse( tempMatrix.extractRotation( this.planes[ "XY" ].matrixWorld ) ) );
+
+			if ( axis == "X" ) {
+				this.activePlane = this.planes[ "XY" ];
+				if ( Math.abs(eye.y) > Math.abs(eye.z) ) this.activePlane = this.planes[ "XZ" ];
+			}
+
+			if ( axis == "Y" ){
+				this.activePlane = this.planes[ "XY" ];
+				if ( Math.abs(eye.x) > Math.abs(eye.z) ) this.activePlane = this.planes[ "YZ" ];
+			}
+
+			if ( axis == "Z" ){
+				this.activePlane = this.planes[ "XZ" ];
+				if ( Math.abs(eye.x) > Math.abs(eye.y) ) this.activePlane = this.planes[ "YZ" ];
+			}
+
+			if ( axis == "XYZ" ) this.activePlane = this.planes[ "XYZE" ];
+
+			if ( axis == "XY" ) this.activePlane = this.planes[ "XY" ];
+
+			if ( axis == "YZ" ) this.activePlane = this.planes[ "YZ" ];
+
+			if ( axis == "XZ" ) this.activePlane = this.planes[ "XZ" ];
+
+			this.hide();
+			this.show();
+
+		};
+
+		this.init();
+
+	};
+
+	THREE.TransformGizmoTranslate.prototype = Object.create( THREE.TransformGizmo.prototype );
+
+	THREE.TransformGizmoRotate = function () {
+
+		THREE.TransformGizmo.call( this );
+
+		var CircleGeometry = function ( radius, facing, arc ) {
+
+				var geometry = new THREE.Geometry();
+				arc = arc ? arc : 1;
+				for ( var i = 0; i <= 64 * arc; ++i ) {
+					if ( facing == 'x' ) geometry.vertices.push( new THREE.Vector3( 0, Math.cos( i / 32 * Math.PI ), Math.sin( i / 32 * Math.PI ) ).multiplyScalar(radius) );
+					if ( facing == 'y' ) geometry.vertices.push( new THREE.Vector3( Math.cos( i / 32 * Math.PI ), 0, Math.sin( i / 32 * Math.PI ) ).multiplyScalar(radius) );
+					if ( facing == 'z' ) geometry.vertices.push( new THREE.Vector3( Math.sin( i / 32 * Math.PI ), Math.cos( i / 32 * Math.PI ), 0 ).multiplyScalar(radius) );
+				}
+
+				return geometry;
+		};
+
+		this.handleGizmos = {
+			X: [
+				[ new THREE.Line( new CircleGeometry(1,'x',0.5), new GizmoLineMaterial( { color: 0xff0000 } ) ) ]
+			],
+			Y: [
+				[ new THREE.Line( new CircleGeometry(1,'y',0.5), new GizmoLineMaterial( { color: 0x00ff00 } ) ) ]
+			],
+			Z: [
+				[ new THREE.Line( new CircleGeometry(1,'z',0.5), new GizmoLineMaterial( { color: 0x0000ff } ) ) ]
+			],
+			E: [
+				[ new THREE.Line( new CircleGeometry(1.25,'z',1), new GizmoLineMaterial( { color: 0xcccc00 } ) ) ]
+			],
+			XYZE: [
+				[ new THREE.Line( new CircleGeometry(1,'z',1), new GizmoLineMaterial( { color: 0x787878 } ) ) ]
+			]
+		};
+
+		this.pickerGizmos = {
+			X: [
+				[ new THREE.Mesh( new THREE.TorusGeometry( 1, 0.12, 4, 12, Math.PI ), new GizmoMaterial( { color: 0xff0000, opacity: 0.25 } ) ), [ 0, 0, 0 ], [ 0, -Math.PI/2, -Math.PI/2 ] ]
+			],
+			Y: [
+				[ new THREE.Mesh( new THREE.TorusGeometry( 1, 0.12, 4, 12, Math.PI ), new GizmoMaterial( { color: 0x00ff00, opacity: 0.25 } ) ), [ 0, 0, 0 ], [ Math.PI/2, 0, 0 ] ]
+			],
+			Z: [
+				[ new THREE.Mesh( new THREE.TorusGeometry( 1, 0.12, 4, 12, Math.PI ), new GizmoMaterial( { color: 0x0000ff, opacity: 0.25 } ) ), [ 0, 0, 0 ], [ 0, 0, -Math.PI/2 ] ]
+			],
+			E: [
+				[ new THREE.Mesh( new THREE.TorusGeometry( 1.25, 0.12, 2, 24 ), new GizmoMaterial( { color: 0xffff00, opacity: 0.25 } ) ) ]
+			],
+			XYZE: [
+				[ new THREE.Mesh( new THREE.Geometry() ) ]// TODO
+			]
+		};
+
+		this.setActivePlane = function ( axis ) {
+
+			if ( axis == "E" ) this.activePlane = this.planes[ "XYZE" ];
+
+			if ( axis == "X" ) this.activePlane = this.planes[ "YZ" ];
+
+			if ( axis == "Y" ) this.activePlane = this.planes[ "XZ" ];
+
+			if ( axis == "Z" ) this.activePlane = this.planes[ "XY" ];
+
+			this.hide();
+			this.show();
+
+		};
+
+		this.update = function ( rotation, eye2 ) {
+
+			THREE.TransformGizmo.prototype.update.apply( this, arguments );
+
+			var group = {
+				handles: this["handles"],
+				pickers: this["pickers"],
+			};
+
+			var tempMatrix = new THREE.Matrix4();
+			var worldRotation = new THREE.Euler( 0, 0, 1 );
+			var tempQuaternion = new THREE.Quaternion();
+			var unitX = new THREE.Vector3( 1, 0, 0 );
+			var unitY = new THREE.Vector3( 0, 1, 0 );
+			var unitZ = new THREE.Vector3( 0, 0, 1 );
+			var quaternionX = new THREE.Quaternion();
+			var quaternionY = new THREE.Quaternion();
+			var quaternionZ = new THREE.Quaternion();
+			var eye = eye2.clone();
+
+			worldRotation.copy( this.planes["XY"].rotation );
+			tempQuaternion.setFromEuler( worldRotation );
+
+			tempMatrix.makeRotationFromQuaternion( tempQuaternion ).getInverse( tempMatrix );
+			eye.applyMatrix4( tempMatrix );
+
+			this.traverse(function(child) {
+
+				tempQuaternion.setFromEuler( worldRotation );
+
+				if ( child.name == "X" ) {
+					quaternionX.setFromAxisAngle( unitX, Math.atan2( -eye.y, eye.z ) );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionX );
+					child.quaternion.copy( tempQuaternion );
+				}
+
+				if ( child.name == "Y" ) {
+					quaternionY.setFromAxisAngle( unitY, Math.atan2( eye.x, eye.z ) );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionY );
+					child.quaternion.copy( tempQuaternion );
+				}
+
+				if ( child.name == "Z" ) {
+					quaternionZ.setFromAxisAngle( unitZ, Math.atan2( eye.y, eye.x ) );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionZ );
+					child.quaternion.copy( tempQuaternion );
+				}
+
+			});
+
+		};
+
+		this.init();
+
+	};
+
+	THREE.TransformGizmoRotate.prototype = Object.create( THREE.TransformGizmo.prototype );
+
+	THREE.TransformGizmoScale = function () {
+
+		THREE.TransformGizmo.call( this );
+
+		var arrowGeometry = new THREE.Geometry();
+		var mesh = new THREE.Mesh( new THREE.BoxGeometry( 0.125, 0.125, 0.125 ) );
+		mesh.position.y = 0.5;
+		mesh.updateMatrix();
+
+		arrowGeometry.merge( mesh.geometry, mesh.matrix );
+
+		var lineXGeometry = new THREE.Geometry();
+		lineXGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 1, 0, 0 ) );
+
+		var lineYGeometry = new THREE.Geometry();
+		lineYGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 1, 0 ) );
+
+		var lineZGeometry = new THREE.Geometry();
+		lineZGeometry.vertices.push( new THREE.Vector3( 0, 0, 0 ), new THREE.Vector3( 0, 0, 1 ) );
+
+		this.handleGizmos = {
+			X: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0xff0000 } ) ), [ 0.5, 0, 0 ], [ 0, 0, -Math.PI/2 ] ],
+				[ new THREE.Line( lineXGeometry, new GizmoLineMaterial( { color: 0xff0000 } ) ) ]
+			],
+			Y: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0x00ff00 } ) ), [ 0, 0.5, 0 ] ],
+				[ new THREE.Line( lineYGeometry, new GizmoLineMaterial( { color: 0x00ff00 } ) ) ]
+			],
+			Z: [
+				[ new THREE.Mesh( arrowGeometry, new GizmoMaterial( { color: 0x0000ff } ) ), [ 0, 0, 0.5 ], [ Math.PI/2, 0, 0 ] ],
+				[ new THREE.Line( lineZGeometry, new GizmoLineMaterial( { color: 0x0000ff } ) ) ]
+			],
+			XYZ: [
+				[ new THREE.Mesh( new THREE.BoxGeometry( 0.125, 0.125, 0.125 ), new GizmoMaterial( { color: 0xffffff, opacity: 0.25 } ) ) ]
+			]
+		};
+
+		this.pickerGizmos = {
+			X: [
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), new GizmoMaterial( { color: 0xff0000, opacity: 0.25 } ) ), [ 0.6, 0, 0 ], [ 0, 0, -Math.PI/2 ] ]
+			],
+			Y: [
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), new GizmoMaterial( { color: 0x00ff00, opacity: 0.25 } ) ), [ 0, 0.6, 0 ] ]
+			],
+			Z: [
+				[ new THREE.Mesh( new THREE.CylinderGeometry( 0.2, 0, 1, 4, 1, false ), new GizmoMaterial( { color: 0x0000ff, opacity: 0.25 } ) ), [ 0, 0, 0.6 ], [ Math.PI/2, 0, 0 ] ]
+			],
+			XYZ: [
+				[ new THREE.Mesh( new THREE.BoxGeometry( 0.4, 0.4, 0.4 ), new GizmoMaterial( { color: 0xffffff, opacity: 0.25 } ) ) ]
+			]
+		};
+
+		this.setActivePlane = function ( axis, eye ) {
+
+			var tempMatrix = new THREE.Matrix4();
+			eye.applyMatrix4( tempMatrix.getInverse( tempMatrix.extractRotation( this.planes[ "XY" ].matrixWorld ) ) );
+
+			if ( axis == "X" ) {
+				this.activePlane = this.planes[ "XY" ];
+				if ( Math.abs(eye.y) > Math.abs(eye.z) ) this.activePlane = this.planes[ "XZ" ];
+			}
+
+			if ( axis == "Y" ){
+				this.activePlane = this.planes[ "XY" ];
+				if ( Math.abs(eye.x) > Math.abs(eye.z) ) this.activePlane = this.planes[ "YZ" ];
+			}
+
+			if ( axis == "Z" ){
+				this.activePlane = this.planes[ "XZ" ];
+				if ( Math.abs(eye.x) > Math.abs(eye.y) ) this.activePlane = this.planes[ "YZ" ];
+			}
+
+			if ( axis == "XYZ" ) this.activePlane = this.planes[ "XYZE" ];
+
+			this.hide();
+			this.show();
+
+		};
+
+		this.init();
+
+	};
+
+	THREE.TransformGizmoScale.prototype = Object.create( THREE.TransformGizmo.prototype );
+
+	THREE.TransformControls = function ( camera, domElement ) {
+
+		// TODO: Make non-uniform scale and rotate play nice in hierarchies
+		// TODO: ADD RXYZ contol
+
+		THREE.Object3D.call( this );
+
+		domElement = ( domElement !== undefined ) ? domElement : document;
+
+		this.gizmo = {};
+		this.gizmo["translate"] = new THREE.TransformGizmoTranslate();
+		this.gizmo["rotate"] = new THREE.TransformGizmoRotate();
+		this.gizmo["scale"] = new THREE.TransformGizmoScale();
+
+		this.add(this.gizmo["translate"]);
+		this.add(this.gizmo["rotate"]);
+		this.add(this.gizmo["scale"]);
+
+		this.gizmo["translate"].hide();
+		this.gizmo["rotate"].hide();
+		this.gizmo["scale"].hide();
+
+		this.object = undefined;
+		this.snap = null;
+		this.space = "world";
+		this.size = 1;
+		this.axis = null;
+
+		var scope = this;
+		
+		var _dragging = false;
+		var _mode = "translate";
+		var _plane = "XY";
+
+		var changeEvent = { type: "change" };
+
+		var ray = new THREE.Raycaster();
+		var projector = new THREE.Projector();
+		var pointerVector = new THREE.Vector3();
+
+		var point = new THREE.Vector3();
+		var offset = new THREE.Vector3();
+
+		var rotation = new THREE.Vector3();
+		var offsetRotation = new THREE.Vector3();
+		var scale = 1;
+
+		var lookAtMatrix = new THREE.Matrix4();
+		var eye = new THREE.Vector3();
+
+		var tempMatrix = new THREE.Matrix4();
+		var tempVector = new THREE.Vector3();
+		var tempQuaternion = new THREE.Quaternion();
+		var unitX = new THREE.Vector3( 1, 0, 0 );
+		var unitY = new THREE.Vector3( 0, 1, 0 );
+		var unitZ = new THREE.Vector3( 0, 0, 1 );
+
+		var quaternionXYZ = new THREE.Quaternion();
+		var quaternionX = new THREE.Quaternion();
+		var quaternionY = new THREE.Quaternion();
+		var quaternionZ = new THREE.Quaternion();
+		var quaternionE = new THREE.Quaternion();
+
+		var oldPosition = new THREE.Vector3();
+		var oldScale = new THREE.Vector3();
+		var oldRotationMatrix = new THREE.Matrix4();
+
+		var parentRotationMatrix  = new THREE.Matrix4();
+		var parentScale = new THREE.Vector3();
+
+		var worldPosition = new THREE.Vector3();
+		var worldRotation = new THREE.Euler();
+		var worldRotationMatrix  = new THREE.Matrix4();
+		var camPosition = new THREE.Vector3();
+		var camRotation = new THREE.Euler();
+
+		domElement.addEventListener( "mousedown", onPointerDown, false );
+		domElement.addEventListener( "touchstart", onPointerDown, false );
+
+		domElement.addEventListener( "mousemove", onPointerHover, false );
+		domElement.addEventListener( "touchmove", onPointerHover, false );
+
+		domElement.addEventListener( "mousemove", onPointerMove, false );
+		domElement.addEventListener( "touchmove", onPointerMove, false );
+
+		domElement.addEventListener( "mouseup", onPointerUp, false );
+		domElement.addEventListener( "mouseout", onPointerUp, false );
+		domElement.addEventListener( "touchend", onPointerUp, false );
+		domElement.addEventListener( "touchcancel", onPointerUp, false );
+		domElement.addEventListener( "touchleave", onPointerUp, false );
+
+		this.attach = function ( object ) {
+
+			scope.object = object;
+
+			this.gizmo["translate"].hide();
+			this.gizmo["rotate"].hide();
+			this.gizmo["scale"].hide();
+			this.gizmo[_mode].show();
+
+			scope.update();
+
+		};
+
+		this.detach = function ( object ) {
+
+			scope.object = undefined;
+			this.axis = undefined;
+
+			this.gizmo["translate"].hide();
+			this.gizmo["rotate"].hide();
+			this.gizmo["scale"].hide();
+
+		};
+
+		this.setMode = function ( mode ) {
+
+			_mode = mode ? mode : _mode;
+
+			if ( _mode == "scale" ) scope.space = "local";
+
+			this.gizmo["translate"].hide();
+			this.gizmo["rotate"].hide();
+			this.gizmo["scale"].hide();	
+			this.gizmo[_mode].show();
+
+			this.update();
+			scope.dispatchEvent( changeEvent );
+
+		};
+
+		this.setSnap = function ( snap ) {
+
+			scope.snap = snap;
+
+		};
+
+		this.setSize = function ( size ) {
+
+			scope.size = size;
+			this.update();
+			scope.dispatchEvent( changeEvent );
+			
+		};
+
+		this.setSpace = function ( space ) {
+
+			scope.space = space;
+			this.update();
+			scope.dispatchEvent( changeEvent );
+
+		};
+
+		this.update = function () {
+
+			if ( scope.object === undefined ) return;
+
+			scope.object.updateMatrixWorld();
+			worldPosition.setFromMatrixPosition( scope.object.matrixWorld );
+			worldRotation.setFromRotationMatrix( tempMatrix.extractRotation( scope.object.matrixWorld ) );
+
+			camera.updateMatrixWorld();
+			camPosition.setFromMatrixPosition( camera.matrixWorld );
+			camRotation.setFromRotationMatrix( tempMatrix.extractRotation( camera.matrixWorld ) );
+
+			scale = worldPosition.distanceTo( camPosition ) / 6 * scope.size;
+			this.position.copy( worldPosition );
+			this.scale.set( scale, scale, scale );
+
+			eye.copy( camPosition ).sub( worldPosition ).normalize();
+
+			if ( scope.space == "local" )
+				this.gizmo[_mode].update( worldRotation, eye );
+
+			else if ( scope.space == "world" )
+				this.gizmo[_mode].update( new THREE.Euler(), eye );
+
+			this.gizmo[_mode].highlight( scope.axis );
+
+		};
+
+		function onPointerHover( event ) {
+
+			if ( scope.object === undefined || _dragging === true ) return;
+
+			event.preventDefault();
+
+			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+
+			var intersect = intersectObjects( pointer, scope.gizmo[_mode].pickers.children );
+
+			if ( intersect ) {
+
+				scope.axis = intersect.object.name;
+				scope.update();
+				scope.dispatchEvent( changeEvent );
+
+			} else if ( scope.axis !== null ) {
+
+				scope.axis = null;
+				scope.update();
+				scope.dispatchEvent( changeEvent );
+
+			}
+
+		}
+
+		function onPointerDown( event ) {
+
+			if ( scope.object === undefined || _dragging === true ) return;
+
+			event.preventDefault();
+			// event.stopPropagation();
+
+			var pointer = event.changedTouches ? event.changedTouches[ 0 ] : event;
+
+			if ( pointer.button === 0 || pointer.button === undefined ) {
+
+				var intersect = intersectObjects( pointer, scope.gizmo[_mode].pickers.children );
+
+				if ( intersect ) {
+
+					scope.axis = intersect.object.name;
+
+					scope.update();
+
+					eye.copy( camPosition ).sub( worldPosition ).normalize();
+
+					scope.gizmo[_mode].setActivePlane( scope.axis, eye );
+
+					var planeIntersect = intersectObjects( pointer, [scope.gizmo[_mode].activePlane] );
+
+					oldPosition.copy( scope.object.position );
+					oldScale.copy( scope.object.scale );
+
+					oldRotationMatrix.extractRotation( scope.object.matrix );
+					worldRotationMatrix.extractRotation( scope.object.matrixWorld );
+
+					parentRotationMatrix.extractRotation( scope.object.parent.matrixWorld );
+					parentScale.setFromMatrixScale( tempMatrix.getInverse( scope.object.parent.matrixWorld ) );
+
+					offset.copy( planeIntersect.point );
+
+				}
+
+			}
+
+			_dragging = true;
+
+		}
+
+		function onPointerMove( event ) {
+
+			if ( scope.object === undefined || scope.axis === null || _dragging === false ) return;
+
+			event.preventDefault();
+			// event.stopPropagation();
+
+			var pointer = event.changedTouches? event.changedTouches[0] : event;
+
+			var planeIntersect = intersectObjects( pointer, [scope.gizmo[_mode].activePlane] );
+
+			point.copy( planeIntersect.point );
+
+			if ( _mode == "translate" ) {
+
+				point.sub( offset );
+				point.multiply(parentScale);
+
+				if ( scope.space == "local" ) {
+
+					point.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+					if ( scope.axis.search("X") == -1 ) point.x = 0;
+					if ( scope.axis.search("Y") == -1 ) point.y = 0;
+					if ( scope.axis.search("Z") == -1 ) point.z = 0;
+
+					point.applyMatrix4( oldRotationMatrix );
+
+					scope.object.position.copy( oldPosition );
+					scope.object.position.add( point );
+
+				} 
+
+				if ( scope.space == "world" || scope.axis.search("XYZ") != -1 ) {
+
+					if ( scope.axis.search("X") == -1 ) point.x = 0;
+					if ( scope.axis.search("Y") == -1 ) point.y = 0;
+					if ( scope.axis.search("Z") == -1 ) point.z = 0;
+
+					point.applyMatrix4( tempMatrix.getInverse( parentRotationMatrix ) );
+
+					scope.object.position.copy( oldPosition );
+					scope.object.position.add( point );
+
+				}
+				
+				if ( scope.snap !== null ) {
+				
+					if ( scope.axis.search("X") != -1 ) scope.object.position.x = Math.round( scope.object.position.x / scope.snap ) * scope.snap;
+					if ( scope.axis.search("Y") != -1 ) scope.object.position.y = Math.round( scope.object.position.y / scope.snap ) * scope.snap;
+					if ( scope.axis.search("Z") != -1 ) scope.object.position.z = Math.round( scope.object.position.z / scope.snap ) * scope.snap;
+				
+				}
+
+			} else if ( _mode == "scale" ) {
+
+				point.sub( offset );
+				point.multiply(parentScale);
+
+				if ( scope.space == "local" ) {
+
+					if ( scope.axis == "XYZ") {
+
+						scale = 1 + ( ( point.y ) / 50 );
+
+						scope.object.scale.x = oldScale.x * scale;
+						scope.object.scale.y = oldScale.y * scale;
+						scope.object.scale.z = oldScale.z * scale;
+
+					} else {
+
+						point.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+						if ( scope.axis == "X" ) scope.object.scale.x = oldScale.x * ( 1 + point.x / 50 );
+						if ( scope.axis == "Y" ) scope.object.scale.y = oldScale.y * ( 1 + point.y / 50 );
+						if ( scope.axis == "Z" ) scope.object.scale.z = oldScale.z * ( 1 + point.z / 50 );
+
+					}
+
+				}
+
+			} else if ( _mode == "rotate" ) {
+
+				point.sub( worldPosition );
+				point.multiply(parentScale);
+				tempVector.copy(offset).sub( worldPosition );
+				tempVector.multiply(parentScale);
+
+				if ( scope.axis == "E" ) {
+
+					point.applyMatrix4( tempMatrix.getInverse( lookAtMatrix ) );
+					tempVector.applyMatrix4( tempMatrix.getInverse( lookAtMatrix ) );
+
+					rotation.set( Math.atan2( point.z, point.y ), Math.atan2( point.x, point.z ), Math.atan2( point.y, point.x ) );
+					offsetRotation.set( Math.atan2( tempVector.z, tempVector.y ), Math.atan2( tempVector.x, tempVector.z ), Math.atan2( tempVector.y, tempVector.x ) );
+
+					tempQuaternion.setFromRotationMatrix( tempMatrix.getInverse( parentRotationMatrix ) );
+
+					quaternionE.setFromAxisAngle( eye, rotation.z - offsetRotation.z );
+					quaternionXYZ.setFromRotationMatrix( worldRotationMatrix );
+
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionE );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionXYZ );
+
+					scope.object.quaternion.copy( tempQuaternion );
+
+				} else if ( scope.axis == "XYZE" ) {
+
+					quaternionE.setFromEuler( point.clone().cross(tempVector).normalize() ); // rotation axis
+
+					tempQuaternion.setFromRotationMatrix( tempMatrix.getInverse( parentRotationMatrix ) );
+					quaternionX.setFromAxisAngle( quaternionE, - point.clone().angleTo(tempVector) );
+					quaternionXYZ.setFromRotationMatrix( worldRotationMatrix );
+
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionX );
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionXYZ );
+
+					scope.object.quaternion.copy( tempQuaternion );
+
+				} else if ( scope.space == "local" ) {
+
+					point.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+					tempVector.applyMatrix4( tempMatrix.getInverse( worldRotationMatrix ) );
+
+					rotation.set( Math.atan2( point.z, point.y ), Math.atan2( point.x, point.z ), Math.atan2( point.y, point.x ) );
+					offsetRotation.set( Math.atan2( tempVector.z, tempVector.y ), Math.atan2( tempVector.x, tempVector.z ), Math.atan2( tempVector.y, tempVector.x ) );
+
+					quaternionXYZ.setFromRotationMatrix( oldRotationMatrix );
+					quaternionX.setFromAxisAngle( unitX, rotation.x - offsetRotation.x );
+					quaternionY.setFromAxisAngle( unitY, rotation.y - offsetRotation.y );
+					quaternionZ.setFromAxisAngle( unitZ, rotation.z - offsetRotation.z );
+
+					if ( scope.axis == "X" ) quaternionXYZ.multiplyQuaternions( quaternionXYZ, quaternionX );
+					if ( scope.axis == "Y" ) quaternionXYZ.multiplyQuaternions( quaternionXYZ, quaternionY );
+					if ( scope.axis == "Z" ) quaternionXYZ.multiplyQuaternions( quaternionXYZ, quaternionZ );
+
+					scope.object.quaternion.copy( quaternionXYZ );
+
+				} else if ( scope.space == "world" ) {
+
+					rotation.set( Math.atan2( point.z, point.y ), Math.atan2( point.x, point.z ), Math.atan2( point.y, point.x ) );
+					offsetRotation.set( Math.atan2( tempVector.z, tempVector.y ), Math.atan2( tempVector.x, tempVector.z ), Math.atan2( tempVector.y, tempVector.x ) );
+
+					tempQuaternion.setFromRotationMatrix( tempMatrix.getInverse( parentRotationMatrix ) );
+
+					quaternionX.setFromAxisAngle( unitX, rotation.x - offsetRotation.x );
+					quaternionY.setFromAxisAngle( unitY, rotation.y - offsetRotation.y );
+					quaternionZ.setFromAxisAngle( unitZ, rotation.z - offsetRotation.z );
+					quaternionXYZ.setFromRotationMatrix( worldRotationMatrix );
+
+					if ( scope.axis == "X" ) tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionX );
+					if ( scope.axis == "Y" ) tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionY );
+					if ( scope.axis == "Z" ) tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionZ );
+
+					tempQuaternion.multiplyQuaternions( tempQuaternion, quaternionXYZ );
+
+					scope.object.quaternion.copy( tempQuaternion );
+
+				}
+
+			}
+
+			scope.update();
+			scope.dispatchEvent( changeEvent );
+
+		}
+
+		function onPointerUp( event ) {
+
+			_dragging = false;
+			onPointerHover( event );
+
+		}
+
+		function intersectObjects( pointer, objects ) {
+
+			var rect = domElement.getBoundingClientRect();
+			var x = (pointer.clientX - rect.left) / rect.width;
+			var y = (pointer.clientY - rect.top) / rect.height;
+			pointerVector.set( ( x ) * 2 - 1, - ( y ) * 2 + 1, 0.5 );
+
+			projector.unprojectVector( pointerVector, camera );
+			ray.set( camPosition, pointerVector.sub( camPosition ).normalize() );
+
+			var intersections = ray.intersectObjects( objects, true );
+			return intersections[0] ? intersections[0] : false;
+
+		}
+
+	};
+
+	THREE.TransformControls.prototype = Object.create( THREE.Object3D.prototype );
+
+};
+
+},{}],3:[function(require,module,exports){
 /* 
 * Handles user mouse input events
 * There will eventually be a lot of them
@@ -46,19 +1041,23 @@ var display = require('../display.js');
 var userState = require('../uservals/userstate.js');
 var userPrefs = require('../uservals/userprefs.js');
 
+var ui = require('./uichange.js');
+
 
 module.exports = keyEvents = function () {
 
 	// Get in more local scope
 	var hotkeys = userPrefs.hotkeys;
 
-	document.addEventListener( 'keyup', function () {
+	document.addEventListener( 'keyup', function ( event ) {
 
 		var keyCode = ( 'which' in event ) ? event.which : event.keyCode;
 
 		/* ===================================
 		   UI
 		   ==================================== */
+
+		// keyup to wait till other pointer lock events done
 		if ( keyCode === hotkeys.pointerLock[2] ) {
 
 			// Toggle display of inspector/assests vs. object sampler
@@ -67,13 +1066,16 @@ module.exports = keyEvents = function () {
 
 				// This will take care of pointer lock too
 				display.hideIntro();
+				ui.activatePointerlock();
 
-			} else {  // just lock the pointer
+			} else if ( userState.editorShowing ) {  // just lock the pointer
 
-				// Keyup so it waits till after all other pointer
-				// changes have been made, after toggleEditor() so arrival
-				// will stay true and intro will hide properly
-				display.toggleEditor();
+				ui.activatePointerlock();
+
+			} else {
+
+				ui.activateEditor();
+
 			}
 
 		}  // end keyCode pointerLock
@@ -102,7 +1104,7 @@ module.exports = keyEvents = function () {
 
 };
 
-},{"../display.js":5,"../uservals/userprefs.js":6,"../uservals/userstate.js":7}],3:[function(require,module,exports){
+},{"../display.js":8,"../uservals/userprefs.js":9,"../uservals/userstate.js":10,"./uichange.js":7}],4:[function(require,module,exports){
 /* 
 * Handles user mouse input events
 * There will eventually be a lot of them
@@ -111,6 +1113,8 @@ module.exports = keyEvents = function () {
 var display = require('../display.js');
 var userState = require('../uservals/userstate.js');
 var userPrefs = require('../uservals/userprefs.js');
+
+var ui = require('./uichange.js');
 
 
 module.exports = mouseEvents = function () {
@@ -161,7 +1165,15 @@ module.exports = mouseEvents = function () {
 		// Pointer lock, get it back
 		if ( targetClasses.contains("esc-clause") ) {
 
-			display.toggleEditor();
+			if ( userState.editorShowing ) {
+
+				ui.activatePointerlock();
+
+			} else {
+
+				ui.activateEditor();
+
+			}
 
 		}  // end if .esc-clause
 
@@ -176,8 +1188,8 @@ module.exports = mouseEvents = function () {
 
 		if ( userState.arrival === true ) {
 
-			// Will take care of pointer lock and all that jazz
 			display.hideIntro();
+			ui.activatePointerlock();
 
 		}
 
@@ -185,14 +1197,14 @@ module.exports = mouseEvents = function () {
 
 };
 
-},{"../display.js":5,"../uservals/userprefs.js":6,"../uservals/userstate.js":7}],4:[function(require,module,exports){
+},{"../display.js":8,"../uservals/userprefs.js":9,"../uservals/userstate.js":10,"./uichange.js":7}],5:[function(require,module,exports){
 /*
 * http://www.html5rocks.com/en/tutorials/pointerlock/intro/
 * Also with functionality to toggle pointer lock
 */
 
 // var controls = require('./controls.js');
-var cubeWorld = require('../../server/worlds/cubeworld.js');
+var world = require('../../server/worlds/cubeworld.js');
 
 
 module.exports = pointerLock = {
@@ -220,7 +1232,7 @@ module.exports = pointerLock = {
 
 		} else {  // This is the bulk of the action
 
-			pointerLock.lockElement = document.body;
+			pointerLock.lockElement = world.renderer.domElement;
 			lockElement = pointerLock.lockElement;
 
 			// Normalize the name for the function that locks the pointer, no
@@ -296,22 +1308,7 @@ module.exports = pointerLock = {
 
 	// Always happens when the pointer lock is changed
 	changePointerLock: function ( event ) {
-
-		// lockElement is passed into here automatically, event is not needed
-		if ( document.pointerLockElement === lockElement ||  // pointer locked
-			document.mozPointerLockElement === lockElement ||
-			document.webkitPointerLockElement === lockElement ) {
-
-			// Start fppov controls
-			cubeWorld.controls.enabled = true;
-
-		} else {  // pointer is NOT locked
-
-			// Stop fppov controls
-			cubeWorld.controls.enabled = false;
-
-		}
-
+		// Has to be here, but has no other purpose
 	},  // end changePointerLock()
 
 	// TODO: Comb https://dvcs.w3.org/hg/pointerlock/raw-file/default/index.html#dfn-target
@@ -341,7 +1338,217 @@ module.exports = pointerLock = {
 
 };  // end pointerLock {}
 
-},{"../../server/worlds/cubeworld.js":18}],5:[function(require,module,exports){
+},{"../../server/worlds/cubeworld.js":21}],6:[function(require,module,exports){
+/*
+* Handles object selection and selectability
+*/
+
+var world = require('../../server/worlds/cubeworld.js');
+var transforms = require('./TransformControls.js');
+var userState = require('../uservals/userstate.js');
+
+
+'use strict'
+
+module.exports = select = {
+
+	// Currently selected object is in userstate.js
+	// just so there's one central place to get it from
+
+	axes: null,
+
+	// For getting intersections
+	projector: new THREE.Projector(),
+	raycaster: new THREE.Raycaster(),
+	pointerVector: new THREE.Vector3(),
+	camPosition: new THREE.Vector3(),
+
+	// Add axes to scene, access functions of axes types
+	initSelect: function () {
+
+		var renderer = world.renderer,
+			camera = world.camera,
+			scene = world.scene;
+
+		// Set up all the prototypes and transform objects
+		transforms();
+
+		// Make transform functions and data available
+		var axes = select.axes = new THREE.TransformControls( camera, renderer.domElement );
+
+		// Start out with translate
+		axes.setMode("translate");
+
+		scene.add(axes);
+
+	},
+
+
+	// --- Enablers --- \\
+
+	// Called in display.js
+	// Hovering will select objects to get show info
+	enableHoverSelection: function () {
+		// Has to be mousedown for selection lock to work
+		document.removeEventListener("mousedown", select.selctionHandler, false);
+		document.addEventListener('mousemove', select.selctionHandler, false);
+
+	},  // end enableHoverSelection()
+
+	// Called in display.js
+	// Clicking will select objects
+	disableHoverSelection: function () {
+		// Has to be mousedown for selection lock to work
+		document.removeEventListener('mousemove', select.selctionHandler, false);
+		document.addEventListener("mousedown", select.selctionHandler, false);
+
+	},  // end disableHoverSelection()
+
+
+	// --- Selection --- \\
+
+	// Determines and, if needed sets, the object currently being selected
+	selctionHandler: function ( event ) {
+
+		// Potential new selected object
+		var newObj = select.firstIntersect(event);
+
+		// If it's a different object then before, select it
+		if ( newObj !== userState.selectedObj ) {
+
+			// console.log( newObj );
+			select.selectObject( newObj );
+
+		}
+
+	},  // end selctionHandler()
+
+	// Returns the object closest to the pointer
+	firstIntersect: function ( event ) {
+
+		var intersectors = select.pointerIntersectors(event);
+
+		if ( intersectors[0] !== undefined ) {
+
+			return intersectors[0].object;
+
+		} else {
+
+			return undefined;
+
+		}
+
+	},  // end firstIntersect()
+
+	// Returns a list of the objects intersected by the pointer
+	// TODO: Explore only testing visible objects
+	pointerIntersectors: function ( event ) {
+
+		var raycaster = select.raycaster,
+			projector = select.projector,
+			pointerVector = select.pointerVector;
+
+		var camera = cubeWorld.camera;
+
+		var camPosition = select.camPosition;
+		camPosition.setFromMatrixPosition( camera.matrixWorld );
+
+		// Will be pointer coords
+		var x, y;
+
+		// When pointer is free, need to get it's position realtive to canvas
+		if ( userState.editorShowing ) {
+
+			var element = cubeWorld.renderer.domElement;
+			var rect = element.getBoundingClientRect();
+
+			x = (( event.clientX - rect.left ) / rect.width) * 2 - 1;
+			y = -(( event.clientY - rect.top ) / rect.height) * 2 + 1;
+
+		} else {
+			// When pointer is locked, pointer always at center
+			x = 0, y = 0;
+
+		}
+
+		// Right now pointerVector is actually coords in the world
+		pointerVector.set( x, y, 0.5 );
+		// Now pointerVector is the mousen's screen position
+		projector.unprojectVector( pointerVector, camera );
+		// Now it's pointing to the middle of the world again...
+		pointerVector.sub( camPosition ).normalize();
+
+		raycaster.set( camPosition, pointerVector );
+
+		return raycaster.intersectObjects( cubeWorld.scene.children );
+
+	},  // end pointerIntersectors()
+
+	// Sets selected object and shows its axes
+	// axes showing may need to happen in a view related script
+	selectObject: function ( newObject ) {
+
+		var oldObject = userState.selectedObj;
+		// console.log("oldObject:");
+		// console.log(oldObject);
+		// console.log( "newObject" );
+		// console.log( newObject )
+		// console.log(select.axes)
+
+		if ( oldObject !== undefined ) {
+
+			select.axes.detach( oldObject );
+
+		}
+
+		userState.selectedObj = newObject;
+
+		if ( newObject !== undefined ) {
+
+			select.axes.attach( newObject );
+
+		}
+
+	},  // end selectObject()
+
+};
+
+},{"../../server/worlds/cubeworld.js":21,"../uservals/userstate.js":10,"./TransformControls.js":2}],7:[function(require,module,exports){
+/*
+* Simply contains the change between ui modes
+*/
+
+var display = require('../display.js');
+// Why are the others not required? Search browserify.
+
+
+module.exports = uiChange = {
+
+	activateEditor: function () {
+
+		display.showEditor();
+		select.disableHoverSelection();
+
+		pointerLock.unlockPointer();
+		// Stop fppov controls
+		cubeWorld.controls.enabled = false;
+
+	},
+
+	activatePointerlock: function () {
+
+		display.hideEditor();
+		select.enableHoverSelection();
+
+		pointerLock.lockPointer();
+		// Start fppov controls
+		cubeWorld.controls.enabled = true;
+
+	},
+
+};
+
+},{"../display.js":8}],8:[function(require,module,exports){
 /* 
 * Controls the hiding and showing of element blocks
 */
@@ -350,6 +1557,32 @@ var userState = require('./uservals/userstate.js');
 
 
 module.exports = displayBlocks = {
+
+	// Maybe place in userstate.js
+	lockElements: [],  // Elements visible during pointer lock
+	freeElements: [],  // Elements visible when pointer is free
+
+	_init_: function () {
+
+		// Used to hide and show for pointer lock
+		// Elements visible during pointer lock
+		displayBlocks.lockElements = [
+			document.getElementsByClassName("sampler")[0],
+			document.getElementsByClassName("reticule")[0]
+		]
+
+		// Elements visible when pointer is free
+		displayBlocks.freeElements = [
+			document.getElementsByClassName("editor-sidebar")[0],
+			document.getElementsByClassName("bottombar")[0]
+		]
+
+		// intro is its own thing
+		// sidebar and inventory are always visible after intro
+
+
+	},  // end _init_
+
 
 	/* ===================================
 	   Functions
@@ -395,17 +1628,17 @@ module.exports = displayBlocks = {
 
 	showEditor: function () {
 
-		pointerLock.unlockPointer();
+		var lockElems = displayBlocks.lockElements;
+		var freeElems = displayBlocks.freeElements;
 
-		// Hide the object info sampler and reticule
-		document.getElementsByClassName( "sampler" )[0].classList.add("collapsed");
-		// document.getElementsByClassName( "reticule" )[0].classList.add("collapsed");
-
-		// Show majority element and editor sidebar
-		document.getElementsByClassName( "majority" )[0].classList.remove("collapsed");
-		document.getElementsByClassName( "editor-sidebar" )[0].classList.remove("collapsed");
-		// This is for just after the intro
-		document.getElementsByClassName( "bottombar" )[0].classList.remove("collapsed");
+		// Hide pointer lock elements
+		for ( var indx = 0; indx < lockElems.length; indx++ ) {
+			lockElems[indx].classList.add("collapsed");
+		}
+		// Show editor elements
+		for ( var indx = 0; indx < freeElems.length ;indx++ ) {
+			freeElems[indx].classList.remove("collapsed");
+		}
 
 		userState.editorShowing = true;
 
@@ -413,38 +1646,21 @@ module.exports = displayBlocks = {
 
 	hideEditor: function () {
 
-		pointerLock.lockPointer();
+		var freeElems = displayBlocks.freeElements;
+		var lockElems = displayBlocks.lockElements;
 
-		// Hide the majority element with the code and bars, and the sidebar editor
-		document.getElementsByClassName( "majority" )[0].classList.add("collapsed");
-		document.getElementsByClassName( "editor-sidebar" )[0].classList.add("collapsed");
-
-		// Show the object info sampler and reticule
-		document.getElementsByClassName( "sampler" )[0].classList.remove("collapsed");
-		// document.getElementsByClassName( "reticule" )[0].classList.remove("collapsed");
-
-		// Show inventory perhaps
-		// document.getElementsByClassName( "inventory" )[0].classList.remove("collapsed");
+		// Hide editor elements
+		for ( var indx = 0; indx < freeElems.length ;indx++ ) {
+			freeElems[indx].classList.add("collapsed");
+		}
+		// Show pointer lock elements
+		for ( var indx = 0; indx < lockElems.length; indx++ ) {
+			lockElems[indx].classList.remove("collapsed");
+		}
 
 		userState.editorShowing = false;
 
 	},  // end hideEditor()
-
-	// --- Tabs --- \\
-	// toggleTabs: function () {
-
-	// 	// Toggle visibility of the inspector and assets in sidebar
-	// 	if ( userState.inspectorShowing ) {
-
-		// displayBlocks.showAssets();
-
-	// 	} else {
-
-		// displayBlocks.showInspector();
-
-	// 	}
-
-	// },  // end toggleTabs()
 
 	showInspector: function () {
 
@@ -493,17 +1709,25 @@ module.exports = displayBlocks = {
 	// --- Intro --- \\
 	showIntro: function () {
 
-		// hide any sidbar contents, the bars, reticule and the inventory
-		document.getElementsByClassName( "sampler" )[0].classList.add("collapsed");
-		document.getElementsByClassName( "editor-sidebar" )[0].classList.add("collapsed");
-		document.getElementsByClassName( "bottombar" )[0].classList.add("collapsed");
-		// document.getElementsByClassName( "reticule" )[0].classList.add("collapsed");
-		// document.getElementsByClassName( "inventory" )[0].classList.add("collapsed");
+		// Hide everything other than the intro and canvas
+		var freeElems = displayBlocks.freeElements;
+		var lockElems = displayBlocks.lockElements;
+
+		for ( var indx = 0; indx < freeElems.length ;indx++ ) {
+			freeElems[indx].classList.add("collapsed");
+		}
+
+		for ( var indx = 0; indx < lockElems.length; indx++ ) {
+			lockElems[indx].classList.add("collapsed");
+		}
+
+		document.getElementsByClassName( "sidebar" )[0].classList.add("collapsed");
 
 		// show the majority with the intro in it
 		document.getElementsByClassName( "intro" )[0].classList.remove("collapsed");
-		document.getElementsByClassName( "majority" )[0].classList.remove("collapsed");
+		// document.getElementsByClassName( "majority" )[0].classList.remove("collapsed");
 		// show the sidebar
+
 
 	},  // end showIntro()
 
@@ -513,7 +1737,10 @@ module.exports = displayBlocks = {
 		var intro = document.getElementsByClassName( "intro" )[0];
 		intro.parentNode.removeChild(intro);
 
-		// The sidebar and sampler are exposed
+		// Show sidebar
+		document.getElementsByClassName( "sidebar" )[0].classList.remove("collapsed");
+
+		// Expose sampler
 		displayBlocks.hideEditor();
 
 		userState.arrival = false;
@@ -523,7 +1750,7 @@ module.exports = displayBlocks = {
 
 }
 
-},{"./uservals/userstate.js":7}],6:[function(require,module,exports){
+},{"./uservals/userstate.js":10}],9:[function(require,module,exports){
 /*
 * User preferences, like hotkeys or flying
 */
@@ -557,54 +1784,29 @@ module.exports = userPrefs = {
 
 };  // end preferences{}
 
-},{}],7:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 /*
-* User variables that need to be stored and accessed
+* Variables representing the user, like location and
+* elements displayed.
 */
 
 module.exports = userState = {
 
 	arrival: true,
 
-	// Display
+	// --- HUD --- \\
 	editorShowing: false,
 	inspectorShowing: true,
+	activeHud: null,  // May be sent/retrieve object data
 
-	preferences: {
-
-		hotkeys: {
-
-			// --- FPS Movement --- \\
-			// NOT YET IMPLEMENTED
-			forwards: ["forwards", "w", 87],
-			left: ["left", "a", 65],
-			backwards: ["backwards", "s", 83],
-			right: ["right", "d", 68],
-			jumpup: ["jump/up", "spacebar", 32],  // just up
-			crouchdown: ["crouch/down", "shift", 16],  // just down
-			// TODO: Implement double tapping, holding, and other behavior
-			// TODO: Discuss implications of this behavior for user experience
-			// startFlying: ["start flying", "double tap space bar", 32],
-			toggleFlying: ["toggle flying", "f", 70],
-
-			// --- pointerlock --- \\
-			pointerLock: ["pointer lock", "esc", 27],
-
-			// --- Testing --- \\
-			tests: ["run tests", "t", 84],
-
-		},  // end hotkeys{}
-
-		flying: true,
-
-	},  // end preferences{}
+	// --- Scene --- \\
+	selectedObject: null, // Selected scene object
 
 }
 
+},{}],11:[function(require,module,exports){
 
-},{}],8:[function(require,module,exports){
-
-},{}],9:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var split = require('browser-split')
 var ClassList = require('class-list')
 var DataSet = require('data-set')
@@ -749,7 +1951,7 @@ function isArray (arr) {
   return Object.prototype.toString.call(arr) == '[object Array]'
 }
 
-},{"browser-split":10,"class-list":11,"data-set":13,"html-element":8}],10:[function(require,module,exports){
+},{"browser-split":13,"class-list":14,"data-set":16,"html-element":11}],13:[function(require,module,exports){
 /*!
  * Cross-Browser Split 1.1.1
  * Copyright 2007-2012 Steven Levithan <stevenlevithan.com>
@@ -857,7 +2059,7 @@ module.exports = (function split(undef) {
   return self;
 })();
 
-},{}],11:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 // contains, add, remove, toggle
 var indexof = require('indexof')
 
@@ -958,7 +2160,7 @@ function isTruthy(value) {
     return !!value
 }
 
-},{"indexof":12}],12:[function(require,module,exports){
+},{"indexof":15}],15:[function(require,module,exports){
 
 var indexOf = [].indexOf;
 
@@ -969,7 +2171,7 @@ module.exports = function(arr, obj){
   }
   return -1;
 };
-},{}],13:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 var Weakmap = require("weakmap")
 var Individual = require("individual")
 
@@ -1013,7 +2215,7 @@ function createHash(elem) {
     return hash
 }
 
-},{"individual":14,"weakmap":16}],14:[function(require,module,exports){
+},{"individual":17,"weakmap":19}],17:[function(require,module,exports){
 var root = require("global")
 
 module.exports = Individual
@@ -1031,7 +2233,7 @@ function Individual(key, value) {
     return value
 }
 
-},{"global":15}],15:[function(require,module,exports){
+},{"global":18}],18:[function(require,module,exports){
 (function (global){
 /*global window, global*/
 if (typeof global !== "undefined") {
@@ -1041,7 +2243,7 @@ if (typeof global !== "undefined") {
 }
 
 }).call(this,typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],16:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 /* (The MIT License)
  *
  * Copyright (c) 2012 Brandon Benvie <http://bbenvie.com>
@@ -1283,7 +2485,7 @@ void function(global, undefined_, undefined){
     global.WeakMap.createStorage = createStorage;
 }((0, eval)('this'));
 
-},{}],17:[function(require,module,exports){
+},{}],20:[function(require,module,exports){
 /* 
 * The building blocks of contextual interactivity
 * TODO: discuss - should bottombar be in here? Should all
@@ -1413,13 +2615,8 @@ var htmlBlocks = module.exports = {
 						)  // end li.obj-1
 					)  // end ul
 
-				),  // end menu.scene-tree
-					
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
+				)  // end menu.scene-tree
+
 			)  // end div.collapsible
 
 		)  // end .scene-tree-container
@@ -1474,13 +2671,8 @@ var htmlBlocks = module.exports = {
 
 					)  // end ul
 
-				),  // end form
+				)  // end form
 
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
 			)  // end div.collapsible
 
 		),  // end objectInfo
@@ -1587,13 +2779,8 @@ var htmlBlocks = module.exports = {
 
 					)  // end .scale
 
-				),  // end form
+				)  // end form
 
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
 			)  // end div.collapsible
 
 		)  // end .transforms
@@ -1627,13 +2814,8 @@ var htmlBlocks = module.exports = {
 
 					)  // end ul
 
-				),  // end form
+				)  // end form
 
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
 			)  // end div.collapsible
 
 		)  // end section.material
@@ -1671,13 +2853,8 @@ var htmlBlocks = module.exports = {
 
 					)  // end ul
 
-				),  // end form
+				)  // end form
 
-				hyper( 'div.jump-container',
-					hyper( 'a.tiny-text.jump-to-top', {href: '#sidebar-nav'},
-						'Jump to top'
-					)
-				)
 			)  // end div.collapsible
 
 		)  // end .componentType
@@ -1712,13 +2889,13 @@ var htmlBlocks = module.exports = {
 
 };  // end htmlBlocks{}
 
-},{"hyperscript":9}],18:[function(require,module,exports){
+},{"hyperscript":12}],21:[function(require,module,exports){
 /* based on libraries of three.js with @author mrdoob / http://mrdoob.com/ */
 
 module.exports = cubeWorld = function () {
 
 	// Hack to get require working
-	this.controls = null;
+	var controls;
 
 	var camera, scene, renderer;
 	var geometry, material, mesh;
@@ -1732,6 +2909,7 @@ module.exports = cubeWorld = function () {
 
 	function init() {
 
+		// Onwards!
 		camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1000 );
 
 		scene = new THREE.Scene();
@@ -1745,8 +2923,8 @@ module.exports = cubeWorld = function () {
 		light.position.set( -1, - 0.5, -1 );
 		scene.add( light );
 
-		cubeWorld.controls = new THREE.PointerLockControls( camera );
-		scene.add( cubeWorld.controls.getObject() );
+		controls = new THREE.PointerLockControls( camera );
+		scene.add( controls.getObject() );
 
 		ray = new THREE.Raycaster();
 		ray.ray.direction.set( 0, -1, 0 );
@@ -1820,24 +2998,47 @@ module.exports = cubeWorld = function () {
 
 		window.addEventListener( 'resize', onWindowResize, false );
 
+		// Hack to get require and external scripts working
+		// Need to be declared in here or values = undefined.
+		cubeWorld.controls = controls;
+		
+		cubeWorld.camera = camera;
+		cubeWorld.oldCamera = camera;
+		cubeWorld.scene = scene;
+		cubeWorld.renderer = renderer;
+
+		cubeWorld.geometry = geometry;
+		cubeWorld.material = material;
+		cubeWorld.mesh = mesh;
+
+		cubeWorld.objects = objects;
+
+		cubeWorld.ray = ray;
+
 	}
 
 	function onWindowResize() {
 
+		var camera = cubeWorld.camera;
+
 		camera.aspect = window.innerWidth / window.innerHeight;
 		camera.updateProjectionMatrix();
 
-		renderer.setSize( window.innerWidth, window.innerHeight );
+		cubeWorld.renderer.setSize( window.innerWidth, window.innerHeight );
 
 	}
 
 	function animate() {
 
+		var controls = cubeWorld.controls,
+			ray = cubeWorld.ray,
+			renderer = cubeWorld.renderer;
+
 		requestAnimationFrame( animate );
 
-		cubeWorld.controls.isOnObject( false );
+		controls.isOnObject( false );
 
-		ray.ray.origin.copy( cubeWorld.controls.getObject().position );
+		ray.ray.origin.copy( controls.getObject().position );
 		ray.ray.origin.y -= 10;
 
 		var intersections = ray.intersectObjects( objects );
@@ -1848,13 +3049,13 @@ module.exports = cubeWorld = function () {
 
 			if ( distance > 0 && distance < 10 ) {
 
-				cubeWorld.controls.isOnObject( true );
+				controls.isOnObject( true );
 
 			}
 
 		}
 
-		cubeWorld.controls.update();
+		controls.update();
 
 		renderer.render( scene, camera );
 
