@@ -978,4 +978,4 @@ module.exports = axis = function () {
 
 	THREE.TransformControls.prototype = Object.create( THREE.Object3D.prototype );
 
-});
+};
