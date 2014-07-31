@@ -33,8 +33,7 @@ module.exports = select = {
 		transforms();
 
 		// Make transform functions and data available
-		// If we use canvas, selection won't work correctly during pointer lock
-		var axes = select.axes = new THREE.TransformControls( camera, document.body );
+		var axes = select.axes = new THREE.TransformControls( camera, renderer.domElement );
 
 		// Start out with translate
 		axes.setMode("translate");
