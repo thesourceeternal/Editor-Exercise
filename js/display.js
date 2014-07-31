@@ -77,8 +77,6 @@ module.exports = displayBlocks = {
 
 	showEditor: function () {
 
-		pointerLock.unlockPointer();
-
 		var lockElems = displayBlocks.lockElements;
 		var freeElems = displayBlocks.freeElements;
 
@@ -96,8 +94,6 @@ module.exports = displayBlocks = {
 	},  // end showEditor()
 
 	hideEditor: function () {
-
-		pointerLock.lockPointer();
 
 		var freeElems = displayBlocks.freeElements;
 		var lockElems = displayBlocks.lockElements;

@@ -4,6 +4,7 @@
 
 var cubeWorld = require('../../server/worlds/cubeworld.js');
 var transforms = require('./TransformControls.js');
+var userState = require('../uservals/userstate.js');
 
 
 module.exports = select = {
@@ -32,5 +33,36 @@ module.exports = select = {
 		scene.add(axes);
 
 	},
+
+
+	// --- Enablers --- \\
+
+	// Called in display.js
+	// Hovering will select objects to get show info
+	enableHoverSelection: function () {
+		// Has to be mousedown for selection lock to work
+		document.removeEventListener("mousedown", select.selctionHandler, false);
+		document.addEventListener('mousemove', select.selctionHandler, false);
+
+	},  // end enableHoverSelection()
+
+	// Called in display.js
+	// Clicking will select objects
+	disableHoverSelection: function () {
+		// Has to be mousedown for selection lock to work
+		document.removeEventListener('mousemove', select.selctionHandler, false);
+		document.addEventListener("mousedown", select.selctionHandler, false);
+
+	},  // end disableHoverSelection()
+
+
+	// --- Selection --- \\
+
+	// Determines and, if needed sets, the object currently being selected
+	selctionHandler: function (event) {
+
+		console.log("In selectionHandler()");
+
+	},  // end selctionHandler()
 
 };
