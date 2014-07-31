@@ -3,7 +3,7 @@
  */
  /*jshint sub:true*/
 
-(function () {
+module.exports = axis = function () {
 
 	'use strict';
 
@@ -978,4 +978,4 @@
 
 	THREE.TransformControls.prototype = Object.create( THREE.Object3D.prototype );
 
-}());
+});
