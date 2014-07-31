@@ -8,6 +8,7 @@ var html = require('./server/htmlBlocks.js');
 var pointerLock = require('./js/controls/pointerlock.js');
 var mouseEvents = require('./js/controls/mouseevents.js');
 var keyEvents = require('./js/controls/keyevents.js');
+var display = require('./js/display.js');
 
 window.addEventListener( 'load', function () {
 	console.log("PROJECT: Editor Exercise");
@@ -22,6 +23,9 @@ window.addEventListener( 'load', function () {
 	// The editor element representations of the objects
 	html._init_();
 
+	// Get some elements for hiding and showing
+	display._init_();
+
 
 	/* ===================================
 	    User/Client
@@ -33,5 +37,8 @@ window.addEventListener( 'load', function () {
 	// Add event listeners
 	mouseEvents();
 	keyEvents();
+
+	// Start things off
+	display.showIntro();
 
 } );  // end window on load

@@ -51,15 +51,6 @@ input[type=number] {
 	width: 3.3rem;
 }
 
-/* --- Major screen space (Not sidebar) --- */
-.majority {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	right: 18rem;
-}
-
 
 /* --- Sidebar --- */
 .sidebar {
@@ -117,12 +108,13 @@ input[type=number] {
 
 /* --- Non-sidebar --- */
 .intro {
+	position: absolute;
 	height: 100%;
 	width: 100%;
 	padding-top: 10%;
 }
 
-.reticule {
+.reticule, .reticule div {
 	position: absolute;
 	top: 50%;
 	left: 50%;
@@ -132,7 +124,8 @@ input[type=number] {
 	position: absolute;
 	bottom: 0;
 	height: 2rem;
-	width: 100%;
+	left: 0;
+	right: 18rem;
 	padding: .3rem;
 	overflow: auto;
 }
@@ -310,4 +303,8 @@ fieldset button {
 	width: .4rem;
 	margin: -.2rem;
 	background-color: rgb(109, 168, 220);
+}
+
+.bottombar {
+	border-top: black solid .1rem;
 }
