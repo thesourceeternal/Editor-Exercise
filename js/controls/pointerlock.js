@@ -4,7 +4,7 @@
 */
 
 // var controls = require('./controls.js');
-var cubeWorld = require('../../server/worlds/cubeworld.js');
+var world = require('../../server/worlds/cubeworld.js');
 
 
 module.exports = pointerLock = {
@@ -32,7 +32,7 @@ module.exports = pointerLock = {
 
 		} else {  // This is the bulk of the action
 
-			pointerLock.lockElement = cubeWorld.renderer.domElement;
+			pointerLock.lockElement = world.renderer.domElement;
 			lockElement = pointerLock.lockElement;
 
 			// Normalize the name for the function that locks the pointer, no

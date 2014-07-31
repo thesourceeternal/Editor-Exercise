@@ -7,7 +7,7 @@ var display = require('../display.js');
 var userState = require('../uservals/userstate.js');
 var userPrefs = require('../uservals/userprefs.js');
 
-var cubeWorld = require('../../server/worlds/cubeworld.js');
+var ui = require('./uichange.js');
 
 
 module.exports = mouseEvents = function () {
@@ -60,42 +60,17 @@ module.exports = mouseEvents = function () {
 
 			if ( userState.editorShowing ) {
 
-				activatePointerlock();
+				ui.activatePointerlock();
 
 			} else {
 
-				activateEditor();
+				ui.activateEditor();
 
 			}
 
 		}  // end if .esc-clause
 
 	} );
-
-
-	// FUNCTIONS TO BE PUT ELSEWHERE
-
-	var activateEditor = function () {
-
-		display.showEditor();
-		select.enableHoverSelection();
-
-		pointerLock.unlockPointer();
-		// Stop fppov controls
-		cubeWorld.controls.enabled = false;
-
-	};
-
-	var activatePointerlock = function () {
-
-		display.hideEditor();
-		select.disableHoverSelection();
-
-		pointerLock.lockPointer();
-		// Start fppov controls
-		cubeWorld.controls.enabled = true;
-
-	};
 
 
 	// --- Intro --- \\
@@ -107,7 +82,7 @@ module.exports = mouseEvents = function () {
 		if ( userState.arrival === true ) {
 
 			display.hideIntro();
-			activatePointerlock();
+			ui.activatePointerlock();
 
 		}
 

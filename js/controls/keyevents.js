@@ -7,7 +7,7 @@ var display = require('../display.js');
 var userState = require('../uservals/userstate.js');
 var userPrefs = require('../uservals/userprefs.js');
 
-var select = require('./select.js');
+var ui = require('./uichange.js');
 
 
 module.exports = keyEvents = function () {
@@ -32,15 +32,15 @@ module.exports = keyEvents = function () {
 
 				// This will take care of pointer lock too
 				display.hideIntro();
-				activatePointerlock();
+				ui.activatePointerlock();
 
 			} else if ( userState.editorShowing ) {  // just lock the pointer
 
-				activatePointerlock();
+				ui.activatePointerlock();
 
 			} else {
 
-				activateEditor();
+				ui.activateEditor();
 
 			}
 
@@ -67,30 +67,5 @@ module.exports = keyEvents = function () {
 		}  // end keyCode tests
 
 	} );  // end document on keyup ()
-
-
-	// FUNCTIONS TO BE PUT ELSEWHERE
-
-	var activateEditor = function () {
-
-		display.showEditor();
-		select.enableHoverSelection();
-
-		pointerLock.unlockPointer();
-		// Stop fppov controls
-		cubeWorld.controls.enabled = false;
-
-	};
-
-	var activatePointerlock = function () {
-
-		display.hideEditor();
-		select.disableHoverSelection();
-
-		pointerLock.lockPointer();
-		// Start fppov controls
-		cubeWorld.controls.enabled = true;
-
-	};
 
 };
