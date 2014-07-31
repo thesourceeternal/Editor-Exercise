@@ -72,11 +72,11 @@ module.exports = select = {
 
 		// Potential new selected object
 		var newObj = select.firstIntersect(event);
+
 		// If it's a different object then before, select it
-		if ( newObj !== userState.selectedObject ) {
+		if ( newObj !== userState.selectedObj ) {
 
 			// console.log( newObj );
-
 			select.selectObject( newObj );
 
 		}
