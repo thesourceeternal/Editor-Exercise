@@ -123,10 +123,6 @@ module.exports = cubeWorld = function () {
 
 		cubeWorld.ray = ray;
 
-		// For selecting objects
-		cubeWorld.projector = new THREE.Projector();
-		cubeWorld.raycaster = new THREE.Raycaster();
-
 	}
 
 	function onWindowResize() {

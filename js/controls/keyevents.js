@@ -15,7 +15,7 @@ module.exports = keyEvents = function () {
 	// Get in more local scope
 	var hotkeys = userPrefs.hotkeys;
 
-	document.addEventListener( 'keyup', function () {
+	document.addEventListener( 'keyup', function ( event ) {
 
 		var keyCode = ( 'which' in event ) ? event.which : event.keyCode;
 
