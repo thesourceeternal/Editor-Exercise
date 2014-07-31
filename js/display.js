@@ -115,22 +115,6 @@ module.exports = displayBlocks = {
 
 	},  // end hideEditor()
 
-	// --- Tabs --- \\
-	// toggleTabs: function () {
-
-	// 	// Toggle visibility of the inspector and assets in sidebar
-	// 	if ( userState.inspectorShowing ) {
-
-		// displayBlocks.showAssets();
-
-	// 	} else {
-
-		// displayBlocks.showInspector();
-
-	// 	}
-
-	// },  // end toggleTabs()
-
 	showInspector: function () {
 
 		// Show inspector, hide assets
