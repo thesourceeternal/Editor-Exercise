@@ -80,11 +80,11 @@ module.exports = displayBlocks = {
 		var lockElems = displayBlocks.lockElements;
 		var freeElems = displayBlocks.freeElements;
 
-		// Hide pointer lock
+		// Hide pointer lock elements
 		for ( var indx = 0; indx < lockElems.length; indx++ ) {
 			lockElems[indx].classList.add("collapsed");
 		}
-		// Show editor
+		// Show editor elements
 		for ( var indx = 0; indx < freeElems.length ;indx++ ) {
 			freeElems[indx].classList.remove("collapsed");
 		}
@@ -98,11 +98,11 @@ module.exports = displayBlocks = {
 		var freeElems = displayBlocks.freeElements;
 		var lockElems = displayBlocks.lockElements;
 
-		// Hide editor
+		// Hide editor elements
 		for ( var indx = 0; indx < freeElems.length ;indx++ ) {
 			freeElems[indx].classList.add("collapsed");
 		}
-		// Show pointer lock
+		// Show pointer lock elements
 		for ( var indx = 0; indx < lockElems.length; indx++ ) {
 			lockElems[indx].classList.remove("collapsed");
 		}

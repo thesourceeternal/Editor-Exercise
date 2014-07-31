@@ -1,7 +1,7 @@
 // Starts things off
 
 // Server stuff
-var cubeWorld = require('./server/worlds/cubeworld.js');
+var world = require('./server/worlds/cubeworld.js');
 var html = require('./server/htmlBlocks.js');
 
 // User stuff
@@ -19,7 +19,7 @@ window.addEventListener( 'load', function () {
 	   ==================================== */
 
 	// TODO: Need to seperate client stuff from this file
-	cubeWorld();
+	world();
 
 	// The editor element representations of the objects
 	html._init_();
