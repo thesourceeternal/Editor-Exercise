@@ -108,22 +108,7 @@ module.exports = pointerLock = {
 
 	// Always happens when the pointer lock is changed
 	changePointerLock: function ( event ) {
-
-		// lockElement is passed into here automatically, event is not needed
-		if ( document.pointerLockElement === lockElement ||  // pointer locked
-			document.mozPointerLockElement === lockElement ||
-			document.webkitPointerLockElement === lockElement ) {
-
-			// Start fppov controls
-			cubeWorld.controls.enabled = true;
-
-		} else {  // pointer is NOT locked
-
-			// Stop fppov controls
-			cubeWorld.controls.enabled = false;
-
-		}
-
+		// Has to be here, but has no other purpose
 	},  // end changePointerLock()
 
 	// TODO: Comb https://dvcs.w3.org/hg/pointerlock/raw-file/default/index.html#dfn-target

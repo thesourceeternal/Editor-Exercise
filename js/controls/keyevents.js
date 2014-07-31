@@ -7,6 +7,8 @@ var display = require('../display.js');
 var userState = require('../uservals/userstate.js');
 var userPrefs = require('../uservals/userprefs.js');
 
+var select = require('./select.js');
+
 
 module.exports = keyEvents = function () {
 
@@ -20,6 +22,8 @@ module.exports = keyEvents = function () {
 		/* ===================================
 		   UI
 		   ==================================== */
+
+		// keyup to wait till other pointer lock events done
 		if ( keyCode === hotkeys.pointerLock[2] ) {
 
 			// Toggle display of inspector/assests vs. object sampler
@@ -28,13 +32,16 @@ module.exports = keyEvents = function () {
 
 				// This will take care of pointer lock too
 				display.hideIntro();
+				activatePointerlock();
 
-			} else {  // just lock the pointer
+			} else if ( userState.editorShowing ) {  // just lock the pointer
 
-				// Keyup so it waits till after all other pointer
-				// changes have been made, after toggleEditor() so arrival
-				// will stay true and intro will hide properly
-				display.toggleEditor();
+				activatePointerlock();
+
+			} else {
+
+				activateEditor();
+
 			}
 
 		}  // end keyCode pointerLock
@@ -60,5 +67,30 @@ module.exports = keyEvents = function () {
 		}  // end keyCode tests
 
 	} );  // end document on keyup ()
+
+
+	// FUNCTIONS TO BE PUT ELSEWHERE
+
+	var activateEditor = function () {
+
+		display.showEditor();
+		select.enableHoverSelection();
+
+		pointerLock.unlockPointer();
+		// Stop fppov controls
+		cubeWorld.controls.enabled = false;
+
+	};
+
+	var activatePointerlock = function () {
+
+		display.hideEditor();
+		select.disableHoverSelection();
+
+		pointerLock.lockPointer();
+		// Start fppov controls
+		cubeWorld.controls.enabled = true;
+
+	};
 
 };

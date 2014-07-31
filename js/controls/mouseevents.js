@@ -7,6 +7,8 @@ var display = require('../display.js');
 var userState = require('../uservals/userstate.js');
 var userPrefs = require('../uservals/userprefs.js');
 
+var cubeWorld = require('../../server/worlds/cubeworld.js');
+
 
 module.exports = mouseEvents = function () {
 
@@ -56,11 +58,44 @@ module.exports = mouseEvents = function () {
 		// Pointer lock, get it back
 		if ( targetClasses.contains("esc-clause") ) {
 
-			display.toggleEditor();
+			if ( userState.editorShowing ) {
+
+				activatePointerlock();
+
+			} else {
+
+				activateEditor();
+
+			}
 
 		}  // end if .esc-clause
 
 	} );
+
+
+	// FUNCTIONS TO BE PUT ELSEWHERE
+
+	var activateEditor = function () {
+
+		display.showEditor();
+		select.enableHoverSelection();
+
+		pointerLock.unlockPointer();
+		// Stop fppov controls
+		cubeWorld.controls.enabled = false;
+
+	};
+
+	var activatePointerlock = function () {
+
+		display.hideEditor();
+		select.disableHoverSelection();
+
+		pointerLock.lockPointer();
+		// Start fppov controls
+		cubeWorld.controls.enabled = true;
+
+	};
 
 
 	// --- Intro --- \\
@@ -71,8 +106,8 @@ module.exports = mouseEvents = function () {
 
 		if ( userState.arrival === true ) {
 
-			// Will take care of pointer lock and all that jazz
 			display.hideIntro();
+			activatePointerlock();
 
 		}
 
