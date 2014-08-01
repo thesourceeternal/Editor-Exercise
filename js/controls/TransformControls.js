@@ -961,10 +961,28 @@ module.exports = axis = function () {
 
 		function intersectObjects( pointer, objects ) {
 
-			var rect = domElement.getBoundingClientRect();
-			var x = (pointer.clientX - rect.left) / rect.width;
-			var y = (pointer.clientY - rect.top) / rect.height;
-			pointerVector.set( ( x ) * 2 - 1, - ( y ) * 2 + 1, 0.5 );
+			// Will be pointer coords
+			var x, y;
+
+			// When pointer is free, need to get it's position realtive to canvas
+			if ( userState.editorShowing ) {
+
+				var rect = domElement.getBoundingClientRect();
+				x = (( event.clientX - rect.left ) / rect.width) * 2 - 1;
+				y = -(( event.clientY - rect.top ) / rect.height) * 2 + 1;
+
+			} else {
+				// When pointer is locked, pointer always at center
+				x = 0, y = 0;
+
+			}
+
+			pointerVector.set( x, y, 0.5 );
+
+			// var rect = domElement.getBoundingClientRect();
+			// var x = (pointer.clientX - rect.left) / rect.width;
+			// var y = (pointer.clientY - rect.top) / rect.height;
+			// pointerVector.set( ( x ) * 2 - 1, - ( y ) * 2 + 1, 0.5 );
 
 			projector.unprojectVector( pointerVector, camera );
 			ray.set( camPosition, pointerVector.sub( camPosition ).normalize() );
