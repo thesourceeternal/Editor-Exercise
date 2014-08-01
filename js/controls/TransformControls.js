@@ -795,7 +795,11 @@ module.exports = axis = function () {
 
 			var planeIntersect = intersectObjects( pointer, [scope.gizmo[_mode].activePlane] );
 
-			point.copy( planeIntersect.point );
+			// When in pointer lock sometimes planeIntersect will be false
+			// Despite this, we want life to go on
+			if ( planeIntersect ) {
+				point.copy( planeIntersect.point );
+			}
 
 			if ( _mode == "translate" ) {
 
