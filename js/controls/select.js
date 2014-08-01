@@ -16,6 +16,8 @@ module.exports = select = {
 
 	axes: null,
 
+	locked: false,
+
 	// For getting intersections
 	projector: new THREE.Projector(),
 	raycaster: new THREE.Raycaster(),
@@ -40,12 +42,19 @@ module.exports = select = {
 
 		scene.add(axes);
 
+		// Add ability to lock selection onto one object
+		document.addEventListener("mousedown", select.lockSelection, false);
+		document.addEventListener("mouseup", select.unlockSelection, false);
+
 	},
 
 
 	// --- Enablers --- \\
 
-	// Called in display.js
+	lockSelection: function () { select.locked = true; },
+
+	unlockSelection: function () { select.locked = false; },
+
 	// Hovering will select objects to get show info
 	enableHoverSelection: function () {
 		// Has to be mousedown for selection lock to work
@@ -54,7 +63,6 @@ module.exports = select = {
 
 	},  // end enableHoverSelection()
 
-	// Called in display.js
 	// Clicking will select objects
 	disableHoverSelection: function () {
 		// Has to be mousedown for selection lock to work
@@ -69,14 +77,18 @@ module.exports = select = {
 	// Determines and, if needed sets, the object currently being selected
 	selctionHandler: function ( event ) {
 
-		// Potential new selected object
-		var newObj = select.firstIntersect(event);
+		if ( !select.locked ) {
 
-		// If it's a different object then before, select it
-		if ( newObj !== userState.selectedObj ) {
+			// Potential new selected object
+			var newObj = select.firstIntersect(event);
 
-			// console.log( newObj );
-			select.selectObject( newObj );
+			// If it's a different object then before, select it
+			if ( newObj !== userState.selectedObj ) {
+
+				// console.log( newObj );
+				select.selectObject( newObj );
+
+			}
 
 		}
 
@@ -145,11 +157,6 @@ module.exports = select = {
 	selectObject: function ( newObject ) {
 
 		var oldObject = userState.selectedObj;
-		// console.log("oldObject:");
-		// console.log(oldObject);
-		// console.log( "newObject" );
-		// console.log( newObject )
-		// console.log(select.axes)
 
 		if ( oldObject !== undefined ) {
 
