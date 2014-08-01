@@ -130,13 +130,10 @@ module.exports = select = {
 
 		}
 
-		// Right now pointerVector is actually coords in the world
 		pointerVector.set( x, y, 0.5 );
-		// Now pointerVector is the mousen's screen position
 		projector.unprojectVector( pointerVector, camera );
-		// Now it's pointing to the middle of the world again...
-		pointerVector.sub( camPosition ).normalize();
 
+		pointerVector.sub( camPosition ).normalize();
 		raycaster.set( camPosition, pointerVector );
 
 		return raycaster.intersectObjects( cubeWorld.scene.children );
