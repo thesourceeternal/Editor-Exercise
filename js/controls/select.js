@@ -16,6 +16,8 @@ module.exports = select = {
 
 	axes: null,
 
+	locked: false,
+
 	// For getting intersections
 	projector: new THREE.Projector(),
 	raycaster: new THREE.Raycaster(),
@@ -45,21 +47,34 @@ module.exports = select = {
 
 	// --- Enablers --- \\
 
-	// Called in display.js
+	lockSelection: function () { select.locked = true; },
+
+	unlockSelection: function () { select.locked = false; },
+
 	// Hovering will select objects to get show info
 	enableHoverSelection: function () {
 		// Has to be mousedown for selection lock to work
 		document.removeEventListener("mousedown", select.selctionHandler, false);
 		document.addEventListener('mousemove', select.selctionHandler, false);
 
+		// Only lock on mousedown when hovering
+		document.addEventListener("mousedown", select.lockSelection, false);
+		document.addEventListener("mouseup", select.unlockSelection, false);
+
 	},  // end enableHoverSelection()
 
-	// Called in display.js
 	// Clicking will select objects
 	disableHoverSelection: function () {
 		// Has to be mousedown for selection lock to work
 		document.removeEventListener('mousemove', select.selctionHandler, false);
 		document.addEventListener("mousedown", select.selctionHandler, false);
+
+		// Selection locking mechanism would interfere when pointer is free
+		document.removeEventListener("mousedown", select.lockSelection, false);
+		document.removeEventListener("mouseup", select.unlockSelection, false);
+
+		// Make absolutely sure user can select objects while in editor
+		select.locked = false;
 
 	},  // end disableHoverSelection()
 
@@ -69,16 +84,21 @@ module.exports = select = {
 	// Determines and, if needed sets, the object currently being selected
 	selctionHandler: function ( event ) {
 
-		// Potential new selected object
-		var newObj = select.firstIntersect(event);
+		if ( !select.locked ) {
+			console.log("blah");
 
-		// If it's a different object then before, select it
-		if ( newObj !== userState.selectedObj ) {
+			// Potential new selected object
+			var newObj = select.firstIntersect(event);
 
-			// console.log( newObj );
-			select.selectObject( newObj );
+			// If it's a different object then before, select it
+			if ( newObj !== userState.selectedObj ) {
 
-		}
+				// console.log( newObj );
+				select.selectObject( newObj );
+
+			}
+
+		}  // end if !select.locked
 
 	},  // end selctionHandler()
 
