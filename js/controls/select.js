@@ -85,7 +85,6 @@ module.exports = select = {
 	selctionHandler: function ( event ) {
 
 		if ( !select.locked ) {
-			console.log("blah");
 
 			// Potential new selected object
 			var newObj = select.firstIntersect(event);
@@ -93,7 +92,6 @@ module.exports = select = {
 			// If it's a different object then before, select it
 			if ( newObj !== userState.selectedObj ) {
 
-				// console.log( newObj );
 				select.selectObject( newObj );
 
 			}
@@ -165,11 +163,6 @@ module.exports = select = {
 	selectObject: function ( newObject ) {
 
 		var oldObject = userState.selectedObj;
-		// console.log("oldObject:");
-		// console.log(oldObject);
-		// console.log( "newObject" );
-		// console.log( newObject )
-		// console.log(select.axes)
 
 		if ( oldObject !== undefined ) {
 
